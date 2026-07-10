@@ -1,0 +1,50 @@
+# ===== Node / npm =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Vite / 前端构建产物 =====
+dist/
+dist-ssr/
+*.local
+
+# ===== TypeScript =====
+*.tsbuildinfo
+
+# ===== Tauri / Rust 后端构建产物 =====
+src-tauri/target/
+src-tauri/gen/
+
+# ===== Tauri 自动生成 =====
+src-tauri/Cargo.lock
+
+# ===== IDE / 编辑器 =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 操作系统 =====
+*.log
+*.tmp
+*.bak
+*.cache
+
+# ===== 环境变量 / 密钥 =====
+.env
+.env.*
+!.env.example
+
+# ===== 截图 / 临时验证文件 =====
+screenshot.png
+*.screenshot.png
+
+# ===== 工作产出临时文件 =====
+*_2026-*.md
+!memory/2026-*.md
