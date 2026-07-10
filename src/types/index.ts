@@ -86,6 +86,8 @@ export interface Branch {
   isCurrent: boolean;
   isRemote: boolean;
   upstream: string | null;
+  lastCommitAuthor: string | null;
+  lastCommitTime: number | null;
 }
 
 // AppError（附录 B.5）

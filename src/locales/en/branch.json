@@ -9,5 +9,8 @@
   "branchesCount": "branches",
   "switching": "Switching…",
   "switchSuccess": "Switched to branch {{branch}}",
-  "switchFailed": "Failed to switch branch"
+  "switchFailed": "Failed to switch branch",
+  "colBranch": "Branch",
+  "colAuthor": "Author",
+  "colLastCommit": "Last Commit"
 }

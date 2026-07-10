@@ -9,5 +9,8 @@
   "branchesCount": "个分支",
   "switching": "切换中…",
   "switchSuccess": "已切换到分支 {{branch}}",
-  "switchFailed": "切换分支失败"
+  "switchFailed": "切换分支失败",
+  "colBranch": "分支",
+  "colAuthor": "提交人",
+  "colLastCommit": "最后提交"
 }

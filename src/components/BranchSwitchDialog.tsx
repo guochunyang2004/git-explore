@@ -1,5 +1,6 @@
 // 分支切换弹窗
 // 列出当前 Git 仓库的所有分支，允许用户选择切换
+// 显示最后提交时间和提交人，按提交时间倒序排列
 import { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { GitBranchIcon, CheckIcon, CloseIcon, RefreshIcon } from "@/components/icons";
@@ -42,14 +43,32 @@ export function BranchSwitchDialog({ open, repoPath, onClose, onSwitched }: Bran
     }
   }, [open, repoPath]);
 
+  // 按最后提交时间倒序排列
+  const sortByLastCommit = (a: Branch, b: Branch): number => {
+    const ta = a.lastCommitTime ?? 0;
+    const tb = b.lastCommitTime ?? 0;
+    return tb - ta; // 倒序
+  };
+
+  const currentBranch = useMemo(
+    () => branches.find((b) => b.isCurrent)?.name ?? null,
+    [branches]
+  );
+
   const filtered = useMemo(() => {
     if (!search) return branches;
     const q = search.toLowerCase();
     return branches.filter((b) => b.name.toLowerCase().includes(q));
   }, [branches, search]);
 
-  const localBranches = filtered.filter((b) => !b.isRemote);
-  const remoteBranches = filtered.filter((b) => b.isRemote);
+  const localBranches = useMemo(
+    () => filtered.filter((b) => !b.isRemote).sort(sortByLastCommit),
+    [filtered]
+  );
+  const remoteBranches = useMemo(
+    () => filtered.filter((b) => b.isRemote).sort(sortByLastCommit),
+    [filtered]
+  );
 
   const handleSwitch = async (branch: Branch) => {
     if (branch.isCurrent) {
@@ -90,8 +109,8 @@ export function BranchSwitchDialog({ open, repoPath, onClose, onSwitched }: Bran
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 460,
-          maxHeight: 520,
+          width: 580,
+          maxHeight: 560,
           background: "var(--bg-surface)",
           border: "1px solid var(--border)",
           borderRadius: 8,
@@ -114,6 +133,21 @@ export function BranchSwitchDialog({ open, repoPath, onClose, onSwitched }: Bran
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <GitBranchIcon size={18} style={{ color: "var(--git-orange)" }} />
             <span style={{ fontSize: 14, fontWeight: 600 }}>{t("branch:title")}</span>
+            {currentBranch && (
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "var(--git-orange)",
+                  background: "rgba(240, 78, 35, 0.08)",
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  fontWeight: 500,
+                  marginLeft: 4,
+                }}
+              >
+                {currentBranch}
+              </span>
+            )}
           </div>
           <button
             className="tb-btn"
@@ -154,6 +188,28 @@ export function BranchSwitchDialog({ open, repoPath, onClose, onSwitched }: Bran
             }}
           />
         </div>
+
+        {/* 表头 */}
+        {!loading && !error && filtered.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 120px 90px",
+              padding: "6px 16px",
+              fontSize: 10,
+              fontWeight: 600,
+              color: "var(--text-tertiary)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              borderBottom: "1px solid var(--border-soft)",
+              gap: 8,
+            }}
+          >
+            <span>{t("branch:colBranch")}</span>
+            <span>{t("branch:colAuthor")}</span>
+            <span style={{ textAlign: "right" }}>{t("branch:colLastCommit")}</span>
+          </div>
+        )}
 
         {/* 分支列表 */}
         <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
@@ -267,6 +323,21 @@ export function BranchSwitchDialog({ open, repoPath, onClose, onSwitched }: Bran
   );
 }
 
+/** 格式化时间为简短相对时间 */
+function formatTime(ts: number | null): string {
+  if (!ts) return "—";
+  const now = Date.now() / 1000;
+  const diff = now - ts;
+  if (diff < 60) return "刚刚";
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+  if (diff < 2592000) return `${Math.floor(diff / 86400)}天前`;
+  if (diff < 31536000) return `${Math.floor(diff / 2592000)}个月前`;
+  // 超过一年显示日期
+  const d = new Date(ts * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function BranchRow({
   branch,
   onSwitch,
@@ -281,7 +352,8 @@ function BranchRow({
     <div
       onClick={switching ? undefined : onSwitch}
       style={{
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns: "1fr 120px 90px",
         alignItems: "center",
         gap: 8,
         padding: "7px 16px",
@@ -299,42 +371,74 @@ function BranchRow({
           (e.currentTarget as HTMLDivElement).style.background = "transparent";
       }}
     >
-      <GitBranchIcon
-        size={14}
-        style={{
-          color: branch.isCurrent ? "var(--git-orange)" : "var(--text-tertiary)",
-          flexShrink: 0,
-        }}
-      />
+      {/* 分支名 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+        <GitBranchIcon
+          size={14}
+          style={{
+            color: branch.isCurrent ? "var(--git-orange)" : "var(--text-tertiary)",
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontWeight: branch.isCurrent ? 600 : 400,
+          }}
+          title={branch.name}
+        >
+          {branch.name}
+        </span>
+        {branch.upstream && (
+          <span style={{ fontSize: 10, color: "var(--text-tertiary)", flexShrink: 0 }}>↑{branch.upstream}</span>
+        )}
+        {branch.isCurrent && (
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              fontSize: 10,
+              color: "var(--git-orange)",
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            <CheckIcon size={12} /> {t("branch:current")}
+          </span>
+        )}
+      </div>
+
+      {/* 提交人 */}
       <span
         style={{
-          flex: 1,
+          fontSize: 11,
+          color: "var(--text-secondary)",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          fontWeight: branch.isCurrent ? 600 : 400,
         }}
-        title={branch.name}
+        title={branch.lastCommitAuthor || ""}
       >
-        {branch.name}
+        {branch.lastCommitAuthor || "—"}
       </span>
-      {branch.upstream && (
-        <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>↑{branch.upstream}</span>
-      )}
-      {branch.isCurrent && (
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-            fontSize: 10,
-            color: "var(--git-orange)",
-            fontWeight: 600,
-          }}
-        >
-          <CheckIcon size={12} /> {t("branch:current")}
-        </span>
-      )}
+
+      {/* 最后提交时间 */}
+      <span
+        style={{
+          fontSize: 11,
+          color: "var(--text-tertiary)",
+          textAlign: "right",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={branch.lastCommitTime ? new Date(branch.lastCommitTime * 1000).toLocaleString() : ""}
+      >
+        {formatTime(branch.lastCommitTime)}
+      </span>
     </div>
   );
 }

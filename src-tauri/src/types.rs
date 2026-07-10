@@ -168,4 +168,6 @@ pub struct Branch {
     pub is_current: bool,
     pub is_remote: bool,
     pub upstream: Option<String>,
+    pub last_commit_author: Option<String>,
+    pub last_commit_time: Option<i64>,
 }

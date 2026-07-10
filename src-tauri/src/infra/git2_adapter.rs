@@ -177,11 +177,23 @@ impl GitOps for Git2Adapter {
                 .ok()
                 .and_then(|b| b.name().ok().flatten().map(String::from));
 
+            // 获取最后提交信息
+            let (last_author, last_time) = branch.get()
+                .target()
+                .and_then(|oid| repo.find_commit(oid).ok())
+                .map(|c| (
+                    c.author().name().map(String::from),
+                    c.author().when().seconds(),
+                ))
+                .unwrap_or((None, 0));
+
             result.push(Branch {
                 name,
                 is_current,
                 is_remote: false,
                 upstream,
+                last_commit_author: last_author,
+                last_commit_time: if last_time != 0 { Some(last_time) } else { None },
             });
         }
 
@@ -189,11 +201,23 @@ impl GitOps for Git2Adapter {
         for branch in repo.branches(Some(git2::BranchType::Remote))? {
             let (branch, _) = branch?;
             if let Ok(Some(name)) = branch.name() {
+                // 获取最后提交信息
+                let (last_author, last_time) = branch.get()
+                    .target()
+                    .and_then(|oid| repo.find_commit(oid).ok())
+                    .map(|c| (
+                        c.author().name().map(String::from),
+                        c.author().when().seconds(),
+                    ))
+                    .unwrap_or((None, 0));
+
                 result.push(Branch {
                     name: name.to_string(),
                     is_current: false,
                     is_remote: true,
                     upstream: None,
+                    last_commit_author: last_author,
+                    last_commit_time: if last_time != 0 { Some(last_time) } else { None },
                 });
             }
         }
