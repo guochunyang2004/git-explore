@@ -1,0 +1,13 @@
+{
+  "repo": "仓库",
+  "branch": "分支",
+  "ahead": "领先",
+  "behind": "落后",
+  "changes": "变更",
+  "selected": "选中",
+  "items": "项",
+  "ready": "就绪",
+  "batchProgress": "批量{{op}}",
+  "language": "语言",
+  "followSystem": "跟随系统"
+}

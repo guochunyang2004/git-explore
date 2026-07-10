@@ -1,0 +1,13 @@
+{
+  "repo": "Repo",
+  "branch": "Branch",
+  "ahead": "ahead",
+  "behind": "behind",
+  "changes": "changes",
+  "selected": "selected",
+  "items": "items",
+  "ready": "Ready",
+  "batchProgress": "Batch {{op}}",
+  "language": "Language",
+  "followSystem": "Follow system"
+}

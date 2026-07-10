@@ -1,0 +1,19 @@
+{
+  "ok": "OK",
+  "cancel": "Cancel",
+  "close": "Close",
+  "yes": "Yes",
+  "no": "No",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "rename": "Rename",
+  "refresh": "Refresh",
+  "search": "Search",
+  "settings": "Settings",
+  "open": "Open",
+  "loading": "Loading...",
+  "empty": "Empty",
+  "error": "Error",
+  "success": "Success",
+  "warning": "Warning"
+}

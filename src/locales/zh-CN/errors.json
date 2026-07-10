@@ -1,0 +1,12 @@
+{
+  "not_found": "路径不存在: {{path}}",
+  "not_a_git_repo": "不是 Git 仓库",
+  "auth_failed": "{{host}} 认证失败",
+  "network_error": "网络错误",
+  "conflict": "合并冲突",
+  "invalid_path": "路径无效",
+  "git_error": "Git 错误",
+  "cancelled": "操作已取消",
+  "internal": "内部错误",
+  "io_error": "读写错误"
+}

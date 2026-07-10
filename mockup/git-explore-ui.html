@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GitExplore — 静态展示图</title>
+<style>
+  /* ============ 设计令牌 (Windows 11 Explorer 风格) ============ */
+  :root {
+    --bg-app: #f3f3f3;
+    --bg-surface: #ffffff;
+    --bg-bar: #fbfbfb;
+    --bg-hover: #ededed;
+    --bg-selected: #e8eefc;
+    --bg-titlebar: #f3f3f3;
+
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-tertiary: #9a9a9a;
+    --text-on-accent: #ffffff;
+
+    --border: #e5e5e5;
+    --border-soft: #efefef;
+    --divider: #e8e8e8;
+
+    --accent: #0067c0;
+    --git-orange: #f04e23;
+    --git-orange-soft: #fdece5;
+    --git-orange-light: #fff4ef;
+
+    --st-modified: #ca5010;
+    --st-added: #107c10;
+    --st-deleted: #c50f1f;
+    --st-untracked: #8764b8;
+    --st-conflict: #c50f1f;
+    --st-clean: #107c10;
+
+    --r-sm: 4px;
+    --r-md: 6px;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.06);
+    --shadow-2: 0 2px 8px rgba(0,0,0,.10);
+
+    --titlebar-h: 36px;
+    --menubar-h: 32px;
+    --toolbar-h: 44px;
+    --addressbar-h: 40px;
+    --statusbar-h: 28px;
+    --sidebar-w: 300px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--text-primary);
+    background: #2b2b2b;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ 应用窗口外壳 ============ */
+  .app-window {
+    position: absolute;
+    inset: 24px;
+    background: var(--bg-app);
+    border: 1px solid #cfcfcf;
+    border-radius: 8px;
+    box-shadow: var(--shadow-2), 0 12px 40px rgba(0,0,0,.22);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ============ 标题栏 ============ */
+  .titlebar {
+    height: var(--titlebar-h);
+    background: var(--bg-titlebar);
+    display: flex;
+    align-items: center;
+    padding: 0 0 0 12px;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .titlebar-icon {
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--git-orange), #ff7a4d);
+    display: grid; place-items: center;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .titlebar-icon svg { width: 11px; height: 11px; }
+  .titlebar-title {
+    font-size: 12px; font-weight: 600; letter-spacing: .2px;
+  }
+  .titlebar-title .sep { color: var(--text-tertiary); margin: 0 6px; font-weight: 400; }
+  .titlebar-title .root { color: var(--text-secondary); font-weight: 400; font-family: "Cascadia Code","Consolas",monospace; }
+  .titlebar-spacer { flex: 1; }
+  .titlebar-ctrl { display: flex; height: 100%; }
+  .titlebar-btn {
+    width: 46px; height: 100%;
+    border: none; background: transparent;
+    display: grid; place-items: center;
+    cursor: pointer; color: var(--text-primary);
+  }
+  .titlebar-btn:hover { background: var(--bg-hover); }
+  .titlebar-btn.close:hover { background: #c42b1c; color: #fff; }
+  .titlebar-btn svg { width: 11px; height: 11px; }
+
+  /* ============ 菜单栏 ============ */
+  .menubar {
+    height: var(--menubar-h);
+    background: var(--bg-bar);
+    display: flex; align-items: center;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--border-soft);
+    flex-shrink: 0;
+  }
+  .menu-item {
+    padding: 5px 10px; border-radius: var(--r-sm);
+    cursor: pointer; font-size: 13px;
+  }
+  .menu-item:hover { background: var(--bg-hover); }
+  .menu-item.active { background: var(--bg-selected); color: var(--accent); }
+
+  /* ============ 工具栏 ============ */
+  .toolbar {
+    height: var(--toolbar-h);
+    background: var(--bg-bar);
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center;
+    padding: 0 8px; gap: 2px;
+    flex-shrink: 0;
+  }
+  .tb-btn {
+    height: 32px; min-width: 32px; padding: 0 8px;
+    border: 1px solid transparent; background: transparent;
+    border-radius: var(--r-sm);
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; color: var(--text-primary); font-size: 12px;
+  }
+  .tb-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+  .tb-btn.primary {
+    background: var(--accent); color: #fff;
+    border-color: var(--accent); font-weight: 600;
+  }
+  .tb-btn.primary:hover { background: #005a9e; }
+  .tb-btn.git-op {
+    background: var(--git-orange); color: #fff;
+    border-color: var(--git-orange); font-weight: 600;
+  }
+  .tb-btn.git-op:hover { background: #d9431d; }
+  .tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .tb-divider { width: 1px; height: 22px; background: var(--divider); margin: 0 4px; }
+  .tb-spacer { flex: 1; }
+  .tb-search {
+    display: flex; align-items: center;
+    height: 30px; width: 220px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 0 8px; gap: 6px;
+  }
+  .tb-search svg { width: 14px; height: 14px; color: var(--text-tertiary); }
+  .tb-search input {
+    border: none; outline: none; background: transparent;
+    font-size: 12px; flex: 1; color: var(--text-primary); font-family: inherit;
+  }
+  .tb-search input::placeholder { color: var(--text-tertiary); }
+
+  /* ============ 地址栏 ============ */
+  .addressbar {
+    height: var(--addressbar-h);
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 8px; gap: 6px;
+    flex-shrink: 0;
+  }
+  /* 根目录切换器（最近打开的根目录） */
+  .root-select {
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; padding: 0 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    font-size: 12px; cursor: pointer;
+    min-width: 200px;
+  }
+  .root-select:hover { border-color: var(--accent); }
+  .root-select svg.ricon { width: 14px; height: 14px; color: var(--git-orange); flex-shrink: 0; }
+  .root-select .root-path { font-family: "Cascadia Code","Consolas",monospace; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .root-select .root-label { color: var(--text-secondary); font-size: 11px; }
+  .root-select .chev { margin-left: auto; color: var(--text-tertiary); }
+  .addr-sep { color: var(--text-tertiary); }
+  .breadcrumb {
+    display: flex; align-items: center;
+    height: 30px; flex: 1;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 0 4px; overflow: hidden;
+  }
+  .crumb {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: var(--r-sm);
+    cursor: pointer; font-size: 12px; white-space: nowrap;
+  }
+  .crumb:hover { background: var(--bg-hover); }
+  .crumb.root { color: var(--text-secondary); }
+  .crumb.gitrepo { color: var(--git-orange); font-weight: 600; }
+  .crumb svg { width: 14px; height: 14px; }
+  .crumb-sep { color: var(--text-tertiary); padding: 0 1px; }
+  .crumb.current { font-weight: 600; }
+  .addr-refresh {
+    height: 30px; width: 30px;
+    border: 1px solid var(--border); background: var(--bg-surface);
+    border-radius: var(--r-sm);
+    display: grid; place-items: center;
+    cursor: pointer; color: var(--text-primary);
+  }
+  .addr-refresh:hover { background: var(--bg-hover); }
+  .addr-refresh svg { width: 15px; height: 15px; }
+
+  /* ============ 内容区 ============ */
+  .content { flex: 1; display: flex; min-height: 0; background: var(--bg-app); }
+
+  /* ----- 左侧树 ----- */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg-app);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .side-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px 4px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  .side-header .hint { color: var(--text-tertiary); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10px; }
+  .side-header .actions { display: flex; gap: 2px; }
+  .side-icon-btn {
+    width: 20px; height: 20px;
+    border: none; background: transparent; border-radius: 3px;
+    display: grid; place-items: center;
+    cursor: pointer; color: var(--text-secondary);
+  }
+  .side-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .side-icon-btn svg { width: 13px; height: 13px; }
+  .side-list { overflow-y: auto; padding: 2px 4px 8px; flex: 1; }
+
+  /* 树节点 */
+  .tree-node {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 8px 3px 4px;
+    border-radius: var(--r-sm);
+    cursor: pointer; font-size: 12px;
+    color: var(--text-primary); white-space: nowrap;
+  }
+  .tree-node:hover { background: var(--bg-hover); }
+  .tree-node.active { background: var(--bg-selected); color: var(--accent); font-weight: 600; }
+  .tree-chevron {
+    width: 14px; height: 14px;
+    display: grid; place-items: center;
+    color: var(--text-secondary); flex-shrink: 0;
+    transition: transform .15s ease;
+  }
+  .tree-chevron svg { width: 10px; height: 10px; }
+  .tree-chevron.open { transform: rotate(90deg); }
+  .tree-icon { width: 16px; height: 16px; flex-shrink: 0; color: #e8b339; }
+  .tree-icon.file { color: var(--text-secondary); }
+  /* git 仓库节点：橙色文件夹 */
+  .tree-node.is-repo .tree-icon { color: var(--git-orange); }
+  .tree-node.is-repo .tree-label { font-weight: 600; }
+  .tree-node.is-repo.active { background: var(--git-orange-light); color: var(--git-orange); }
+  .tree-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .tree-meta {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; flex-shrink: 0;
+    font-family: "Cascadia Code","Consolas",monospace;
+    color: var(--text-secondary);
+  }
+  .tree-meta .branch { color: var(--git-orange); font-weight: 600; }
+  .tree-badge {
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: 10px; line-height: 1;
+    padding: 2px 4px; border-radius: 8px;
+    font-weight: 600; flex-shrink: 0;
+    font-family: "Segoe UI", sans-serif;
+  }
+  .tree-badge.ahead { background: var(--git-orange-soft); color: var(--git-orange); }
+  .tree-badge.behind { background: #e6f0fb; color: var(--accent); }
+  .tree-badge.clean { background: #e6f3e6; color: var(--st-clean); }
+  .tree-badge svg { width: 9px; height: 9px; }
+  .tree-status {
+    font-size: 10px; font-weight: 700;
+    width: 14px; text-align: center; flex-shrink: 0;
+  }
+  .tree-children { margin-left: 14px; }
+  .tree-children.collapsed { display: none; }
+
+  /* 识别提示条 */
+  .detect-bar {
+    display: flex; align-items: center; gap: 6px;
+    margin: 4px 8px 6px; padding: 5px 8px;
+    background: var(--git-orange-light);
+    border: 1px solid #f7d9cc;
+    border-radius: var(--r-sm);
+    font-size: 11px; color: var(--git-orange);
+  }
+  .detect-bar svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .detect-bar .num { font-weight: 700; }
+
+  /* ============ 批量模式：仓库复选框 ============ */
+  .tree-check {
+    width: 15px; height: 15px;
+    border: 1.5px solid #b0b0b0;
+    border-radius: 3px;
+    background: #fff;
+    display: grid; place-items: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: all .12s ease;
+  }
+  .tree-check:hover { border-color: var(--git-orange); }
+  .tree-check.checked {
+    background: var(--git-orange);
+    border-color: var(--git-orange);
+  }
+  .tree-check.checked svg { width: 10px; height: 10px; color: #fff; }
+  .tree-check svg { display: none; }
+  .tree-check.checked svg { display: block; }
+
+  /* ============ 批量操作栏（多选仓库时浮现） ============ */
+  .batch-bar {
+    height: 38px;
+    background: linear-gradient(180deg, #fff5f0, #ffe9df);
+    border-bottom: 1px solid #f7d9cc;
+    display: flex; align-items: center;
+    padding: 0 10px; gap: 4px;
+    flex-shrink: 0;
+  }
+  .batch-bar .bb-count {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--git-orange);
+    padding: 0 6px 0 2px;
+    white-space: nowrap;
+  }
+  .batch-bar .bb-count .n { font-size: 14px; }
+  .bb-btn {
+    height: 28px; padding: 0 10px;
+    border: 1px solid var(--git-orange);
+    background: #fff; color: var(--git-orange);
+    border-radius: var(--r-sm);
+    display: inline-flex; align-items: center; gap: 5px;
+    cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .bb-btn:hover { background: var(--git-orange); color: #fff; }
+  .bb-btn.solid { background: var(--git-orange); color: #fff; }
+  .bb-btn.solid:hover { background: #d9431d; }
+  .bb-btn.ghost { border-color: #d9c4ba; color: var(--text-secondary); background: transparent; }
+  .bb-btn.ghost:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border); }
+  .bb-btn svg { width: 13px; height: 13px; }
+  .bb-divider { width: 1px; height: 18px; background: #f0cdc0; margin: 0 3px; }
+  .bb-spacer { flex: 1; }
+
+  /* ============ 批量进度面板（执行时浮现） ============ */
+  .batch-panel {
+    flex-shrink: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(0,0,0,.05);
+    display: flex; flex-direction: column;
+    max-height: 190px;
+  }
+  .bp-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 12px;
+  }
+  .bp-title { font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+  .bp-title svg { width: 14px; height: 14px; color: var(--git-orange); }
+  .bp-summary { color: var(--text-secondary); }
+  .bp-summary .ok { color: var(--st-added); font-weight: 600; }
+  .bp-summary .fail { color: var(--st-deleted); font-weight: 600; }
+  .bp-summary .run { color: var(--accent); font-weight: 600; }
+  .bp-summary .skip { color: var(--text-secondary); font-weight: 600; }
+  .bp-spacer { flex: 1; }
+  .bp-prog-wrap {
+    width: 130px; height: 6px;
+    background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .bp-prog-bar { height: 100%; background: var(--git-orange); border-radius: 3px; }
+  .bp-actions { display: flex; gap: 4px; }
+  .bp-ibtn {
+    width: 22px; height: 22px;
+    border: 1px solid var(--border); background: #fff;
+    border-radius: 3px; display: grid; place-items: center;
+    cursor: pointer; color: var(--text-secondary);
+  }
+  .bp-ibtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .bp-ibtn svg { width: 12px; height: 12px; }
+  .bp-list { overflow-y: auto; padding: 2px 0; }
+  .bp-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 12px; font-size: 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .bp-row:last-child { border-bottom: none; }
+  .bp-status-icon { width: 16px; height: 16px; flex-shrink: 0; display: grid; place-items: center; }
+  .bp-status-icon svg { width: 14px; height: 14px; }
+  .bp-status-icon.ok svg { color: var(--st-added); }
+  .bp-status-icon.fail svg { color: var(--st-deleted); }
+  .bp-status-icon.run svg { color: var(--accent); }
+  .bp-status-icon.queue svg { color: var(--text-tertiary); }
+  .bp-repo { font-weight: 600; color: var(--text-primary); min-width: 120px; }
+  .bp-branch { font-family: "Cascadia Code","Consolas",monospace; color: var(--git-orange); font-size: 11px; min-width: 80px; }
+  .bp-stage { color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bp-stage.run { color: var(--accent); }
+  .bp-stage.fail { color: var(--st-deleted); }
+  .bp-rowprog { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+  .bp-rowprog .fill { height: 100%; background: var(--accent); border-radius: 2px; }
+  .bp-rowprog.done .fill { background: var(--st-added); }
+  .bp-rowprog.fail .fill { background: var(--st-deleted); }
+  .bp-retry {
+    font-size: 11px; color: var(--accent); cursor: pointer;
+    padding: 2px 6px; border-radius: 3px; flex-shrink: 0;
+  }
+  .bp-retry:hover { background: var(--bg-selected); }
+
+  /* ----- 右侧列表 ----- */
+  .main-pane {
+    flex: 1; background: var(--bg-surface);
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  .list-header {
+    display: flex; align-items: center;
+    height: 30px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+    flex-shrink: 0;
+  }
+  .list-col {
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 10px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .4px;
+    cursor: pointer; height: 100%; white-space: nowrap;
+  }
+  .list-col:hover { color: var(--text-primary); }
+  .list-col .sort-arr { color: var(--accent); }
+  .list-col.name { flex: 1.6; }
+  .list-col.status { width: 80px; }
+  .list-col.modified { width: 150px; }
+  .list-col.size { width: 90px; justify-content: flex-end; }
+  .list-col.commit { width: 200px; }
+  .list-body { flex: 1; overflow-y: auto; }
+
+  .list-row {
+    display: flex; align-items: center;
+    height: 28px;
+    border-bottom: 1px solid var(--border-soft);
+    cursor: default;
+  }
+  .list-row:hover { background: #f7f9fd; }
+  .list-row.selected { background: var(--bg-selected); }
+  .list-row.selected .cell.name { color: var(--accent); }
+  .cell {
+    padding: 0 10px; font-size: 12px; color: var(--text-primary);
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 100%;
+  }
+  .cell.name { flex: 1.6; gap: 8px; }
+  .cell.name .ficon { width: 16px; height: 16px; flex-shrink: 0; }
+  .cell.name .fname { overflow: hidden; text-overflow: ellipsis; }
+  .cell.status { width: 80px; }
+  .cell.modified { width: 150px; color: var(--text-secondary); }
+  .cell.size { width: 90px; justify-content: flex-end; color: var(--text-secondary); }
+  .cell.commit { width: 200px; color: var(--text-secondary); gap: 6px; }
+  .cell.commit .hash { font-family: "Cascadia Code","Consolas",monospace; color: var(--text-tertiary); font-size: 11px; }
+  .cell.commit .msg { overflow: hidden; text-overflow: ellipsis; }
+  .cell.na { color: var(--text-tertiary); font-size: 11px; }
+
+  .st-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; font-size: 10px; font-weight: 700; color: #fff; letter-spacing: .3px;
+  }
+  .st-pill.M { background: var(--st-modified); }
+  .st-pill.A { background: var(--st-added); }
+  .st-pill.D { background: var(--st-deleted); }
+  .st-pill.Q { background: var(--st-untracked); }
+  .st-pill.U { background: var(--st-conflict); }
+  .st-pill.dot { background: var(--st-clean); min-width: 8px; width: 8px; height: 8px; border-radius: 50%; padding: 0; }
+
+  .ficon.folder { color: #e8b339; }
+  .ficon.folder.git { color: var(--git-orange); }
+  .ficon.file { color: var(--text-secondary); }
+
+  /* ============ 状态栏 ============ */
+  .statusbar {
+    height: var(--statusbar-h);
+    background: var(--bg-bar);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 10px; gap: 14px;
+    font-size: 11px; color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .sb-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .sb-item svg { width: 12px; height: 12px; }
+  .sb-repo { color: var(--git-orange); font-weight: 600; }
+  .sb-branch { color: var(--text-primary); font-weight: 600; }
+  .sb-branch .b-name { color: var(--git-orange); }
+  .sb-sync-ahead { color: var(--git-orange); font-weight: 600; }
+  .sb-sync-behind { color: var(--accent); font-weight: 600; }
+  .sb-changes .num { color: var(--st-modified); font-weight: 600; }
+  .sb-spacer { flex: 1; }
+  .sb-link { color: var(--text-secondary); }
+  .sb-link:hover { color: var(--accent); cursor: pointer; }
+  .sb-divider { width: 1px; height: 14px; background: var(--divider); }
+
+  /* ============ 语言切换器 ============ */
+  .lang-select {
+    display: flex; align-items: center; gap: 5px;
+    height: 20px; padding: 0 6px;
+    border-radius: 3px; cursor: pointer;
+    color: var(--text-secondary); font-size: 11px;
+    white-space: nowrap;
+  }
+  .lang-select:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .lang-select svg { width: 12px; height: 12px; }
+  .lang-select .lang-code { font-weight: 600; color: var(--text-primary); }
+  .lang-select .lang-name { color: var(--text-secondary); }
+  .lang-select .chev { color: var(--text-tertiary); }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #c8c8c8; border: 3px solid transparent; background-clip: content-box; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; background-clip: content-box; border: 3px solid transparent; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  .mockup-tag {
+    position: fixed; left: 24px; bottom: 24px;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: 11px; padding: 5px 10px; border-radius: 4px; z-index: 50;
+    backdrop-filter: blur(6px);
+    font-family: "Cascadia Code","Consolas",monospace; letter-spacing: .4px;
+  }
+</style>
+</head>
+<body>
+  <div class="app-window">
+
+    <!-- ========== 标题栏 ========== -->
+    <div class="titlebar">
+      <div class="titlebar-icon" title="GitExplore">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/>
+          <path d="M6 8.2v7.6"/><path d="M18 10.2c0 4-6 2.8-6 6"/>
+        </svg>
+      </div>
+      <div class="titlebar-title">
+        GitExplore
+        <span class="sep">—</span>
+        <span class="root">D:\Projects</span>
+      </div>
+      <div class="titlebar-spacer"></div>
+      <div class="titlebar-ctrl">
+        <button class="titlebar-btn" title="最小化">
+          <svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+        </button>
+        <button class="titlebar-btn" title="最大化">
+          <svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1" fill="none"><rect x="2.5" y="2.5" width="7" height="7"/></svg>
+        </button>
+        <button class="titlebar-btn close" title="关闭">
+          <svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.1"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== 菜单栏 ========== -->
+    <div class="menubar">
+      <div class="menu-item">文件(<u>F</u>)</div>
+      <div class="menu-item">编辑(<u>E</u>)</div>
+      <div class="menu-item active">查看(<u>V</u>)</div>
+      <div class="menu-item">仓库(<u>R</u>)</div>
+      <div class="menu-item">分支(<u>B</u>)</div>
+      <div class="menu-item">帮助(<u>H</u>)</div>
+    </div>
+
+    <!-- ========== 工具栏 ========== -->
+    <div class="toolbar">
+      <button class="tb-btn primary" title="打开根目录文件夹">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5m-2.5-2.5 2.5 2.5 2.5-2.5"/></svg>
+        打开文件夹
+      </button>
+      <div class="tb-divider"></div>
+      <button class="tb-btn git-op" title="拉取 (Fetch & Merge)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+        拉取
+      </button>
+      <button class="tb-btn" title="提交">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        提交
+      </button>
+      <button class="tb-btn" title="推送">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="m7 13 5-5 5 5"/><path d="M5 4h14"/></svg>
+        推送
+      </button>
+      <div class="tb-divider"></div>
+      <button class="tb-btn" title="分支">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M6 8.2v7.6"/><path d="M18 11.2c0 3.2-6 2-6 5.8"/></svg>
+        分支
+      </button>
+      <button class="tb-btn" title="历史">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        历史
+      </button>
+      <div class="tb-divider"></div>
+      <!-- 批量模式开关 -->
+      <button class="tb-btn git-op" title="批量模式：勾选多个 git 仓库进行批量操作">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+        批量
+      </button>
+      <button class="tb-btn" title="刷新（重新扫描）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        刷新
+      </button>
+      <div class="tb-spacer"></div>
+      <div class="tb-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="搜索文件、提交、分支…" />
+      </div>
+      <button class="tb-btn" title="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <!-- ========== 批量操作栏（勾选仓库后浮现） ========== -->
+    <div class="batch-bar">
+      <div class="bb-count" title="已选中的 git 仓库">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/></svg>
+        已选 <span class="n">2</span> 个仓库
+      </div>
+      <div class="bb-divider"></div>
+      <button class="bb-btn solid" title="批量拉取所有选中仓库">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+        批量拉取
+      </button>
+      <button class="bb-btn" title="批量推送所有选中仓库">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="m7 13 5-5 5 5"/><path d="M5 4h14"/></svg>
+        批量推送
+      </button>
+      <button class="bb-btn" title="批量获取（仅 fetch）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        批量获取
+      </button>
+      <button class="bb-btn" title="批量同步（pull + push）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M17 14l3-3-3-3"/><path d="M4 13h16"/></svg>
+        批量同步
+      </button>
+      <button class="bb-btn" title="批量提交（统一提交信息）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        批量提交
+      </button>
+      <div class="bb-spacer"></div>
+      <button class="bb-btn ghost" title="全选所有 git 仓库">全选</button>
+      <button class="bb-btn ghost" title="清除选择">清除</button>
+    </div>
+
+    <!-- ========== 地址栏 ========== -->
+    <div class="addressbar">
+      <!-- 根目录切换器（最近打开的根目录列表） -->
+      <div class="root-select" title="切换根目录（最近打开）">
+        <svg class="ricon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="root-label">根目录</span>
+        <span class="root-path">D:\Projects</span>
+        <span class="chev">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 5 3 3 3-3"/></svg>
+        </span>
+      </div>
+      <span class="addr-sep">›</span>
+      <div class="breadcrumb">
+        <div class="crumb root">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          Projects
+        </div>
+        <span class="crumb-sep">›</span>
+        <!-- git 仓库节点在面包屑中高亮 -->
+        <div class="crumb gitrepo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6"/><path d="M18 10.2c0 4-6 2.8-6 6"/></svg>
+          frontend-app
+        </div>
+        <span class="crumb-sep">›</span>
+        <div class="crumb">src</div>
+        <span class="crumb-sep">›</span>
+        <div class="crumb current">components</div>
+      </div>
+      <button class="addr-refresh" title="刷新">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+
+    <!-- ========== 内容区 ========== -->
+    <div class="content">
+
+      <!-- 左侧：单一文件树（自动识别 git 仓库） -->
+      <div class="sidebar">
+        <div class="side-header">
+          <span>文件树</span>
+          <span class="hint">自动识别 .git 目录</span>
+          <div class="actions">
+            <button class="side-icon-btn" title="折叠全部">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 5 5 5-5"/><path d="m7 6 5 5 5-5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 识别结果提示条 -->
+        <div class="detect-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6" stroke-width="1.6"/></svg>
+          已识别 <span class="num">4</span> 个 Git 仓库
+        </div>
+
+        <div class="side-list">
+          <!-- 根目录 -->
+          <div class="tree-node">
+            <span class="tree-chevron open"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+            <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span class="tree-label">Projects</span>
+            <span class="tree-meta">D:\</span>
+          </div>
+          <div class="tree-children">
+
+            <!-- git 仓库 1 (当前上下文, 展开, 已勾选) -->
+            <div class="tree-node is-repo active">
+              <span class="tree-check checked" title="加入批量选择">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 6 3 3 5-6"/></svg>
+              </span>
+              <span class="tree-chevron open"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+              <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="tree-label">frontend-app</span>
+              <span class="tree-meta"><span class="branch">main</span></span>
+              <span class="tree-badge ahead" title="领先远端">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v8m-3-5 3-3 3 3"/></svg>2
+              </span>
+              <span class="tree-badge behind" title="落后远端">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 10V2M3 7l3 3 3-3"/></svg>1
+              </span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-node">
+                <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+                <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="tree-label">.github</span>
+              </div>
+              <div class="tree-node">
+                <span class="tree-chevron open"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+                <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="tree-label">public</span>
+              </div>
+              <div class="tree-children">
+                <div class="tree-node">
+                  <span class="tree-chevron"></span>
+                  <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                  <span class="tree-label">logo.svg</span>
+                  <span class="tree-status" style="color:var(--st-modified)">M</span>
+                </div>
+              </div>
+              <!-- src (展开) -->
+              <div class="tree-node">
+                <span class="tree-chevron open"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+                <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="tree-label">src</span>
+              </div>
+              <div class="tree-children">
+                <!-- 当前选中: components -->
+                <div class="tree-node active">
+                  <span class="tree-chevron open"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+                  <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  <span class="tree-label">components</span>
+                </div>
+                <div class="tree-node">
+                  <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+                  <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  <span class="tree-label">hooks</span>
+                </div>
+                <div class="tree-node">
+                  <span class="tree-chevron"></span>
+                  <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                  <span class="tree-label">App.tsx</span>
+                  <span class="tree-status" style="color:var(--st-modified)">M</span>
+                </div>
+                <div class="tree-node">
+                  <span class="tree-chevron"></span>
+                  <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                  <span class="tree-label">store.ts</span>
+                  <span class="tree-status" style="color:var(--st-untracked)">?</span>
+                </div>
+              </div>
+              <div class="tree-node">
+                <span class="tree-chevron"></span>
+                <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                <span class="tree-label">package.json</span>
+              </div>
+              <div class="tree-node">
+                <span class="tree-chevron"></span>
+                <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                <span class="tree-label">README.md</span>
+                <span class="tree-status" style="color:var(--st-added)">A</span>
+              </div>
+            </div>
+
+            <!-- git 仓库 2 (已勾选) -->
+            <div class="tree-node is-repo">
+              <span class="tree-check checked" title="加入批量选择">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 6 3 3 5-6"/></svg>
+              </span>
+              <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+              <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="tree-label">backend-api</span>
+              <span class="tree-meta"><span class="branch">develop</span></span>
+              <span class="tree-badge ahead" title="领先远端">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v8m-3-5 3-3 3 3"/></svg>5
+              </span>
+            </div>
+
+            <!-- git 仓库 3 -->
+            <div class="tree-node is-repo">
+              <span class="tree-check" title="加入批量选择">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 6 3 3 5-6"/></svg>
+              </span>
+              <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+              <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="tree-label">docs-site</span>
+              <span class="tree-meta"><span class="branch">main</span></span>
+              <span class="tree-badge clean" title="已同步">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m2 6 3 3 5-6"/></svg>
+              </span>
+            </div>
+
+            <!-- git 仓库 4 -->
+            <div class="tree-node is-repo">
+              <span class="tree-check" title="加入批量选择">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 6 3 3 5-6"/></svg>
+              </span>
+              <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+              <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="tree-label">design-tokens</span>
+              <span class="tree-meta"><span class="branch">feat/theme</span></span>
+              <span class="tree-badge behind" title="落后远端">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 10V2M3 7l3 3 3-3"/></svg>3
+              </span>
+            </div>
+
+            <!-- 普通目录（非 git） -->
+            <div class="tree-node">
+              <span class="tree-chevron"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 2 4 3-4 3"/></svg></span>
+              <svg class="tree-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="tree-label">notes</span>
+              <span class="tree-meta" style="color:var(--text-tertiary)">非 git</span>
+            </div>
+
+            <!-- 普通文件 -->
+            <div class="tree-node">
+              <span class="tree-chevron"></span>
+              <svg class="tree-icon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="tree-label">workspace.code-workspace</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：文件/目录列表 -->
+      <div class="main-pane">
+        <div class="list-header">
+          <div class="list-col name">名称 <span class="sort-arr">▲</span></div>
+          <div class="list-col status">Git 状态</div>
+          <div class="list-col modified">修改日期</div>
+          <div class="list-col size">大小</div>
+          <div class="list-col commit">最后提交</div>
+        </div>
+        <div class="list-body">
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="fname">Buttons</span>
+            </div>
+            <div class="cell status"><span class="st-pill dot" title="无变更"></span></div>
+            <div class="cell modified">2026/06/15 14:22</div>
+            <div class="cell size">—</div>
+            <div class="cell commit"><span class="hash">a3f1c0d</span><span class="msg">feat: add button variants</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="fname">Dialogs</span>
+            </div>
+            <div class="cell status"><span class="st-pill M" title="已修改">M</span></div>
+            <div class="cell modified">2026/06/19 17:05</div>
+            <div class="cell size">—</div>
+            <div class="cell commit"><span class="hash">e72b9a4</span><span class="msg">wip: dialog refactor</span></div>
+          </div>
+          <div class="list-row selected">
+            <div class="cell name">
+              <svg class="ficon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="fname">Layout</span>
+            </div>
+            <div class="cell status"><span class="st-pill dot" title="无变更"></span></div>
+            <div class="cell modified">2026/06/12 09:48</div>
+            <div class="cell size">—</div>
+            <div class="cell commit"><span class="hash">c0d8e2f</span><span class="msg">refactor: split layout</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="fname">Forms</span>
+            </div>
+            <div class="cell status"><span class="st-pill Q" title="未跟踪">?</span></div>
+            <div class="cell modified">2026/06/19 18:40</div>
+            <div class="cell size">—</div>
+            <div class="cell commit"><span class="hash" style="color:var(--text-tertiary)">—</span><span class="msg" style="color:var(--text-tertiary)">未跟踪</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">Header.tsx</span>
+            </div>
+            <div class="cell status"><span class="st-pill M" title="已修改">M</span></div>
+            <div class="cell modified">2026/06/19 18:12</div>
+            <div class="cell size">4.2 KB</div>
+            <div class="cell commit"><span class="hash">b1a77e0</span><span class="msg">fix: header sticky offset</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">Sidebar.tsx</span>
+            </div>
+            <div class="cell status"><span class="st-pill M" title="已修改">M</span></div>
+            <div class="cell modified">2026/06/19 16:50</div>
+            <div class="cell size">6.8 KB</div>
+            <div class="cell commit"><span class="hash">d4e3310</span><span class="msg">feat: collapsible sidebar</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">StatusBar.tsx</span>
+            </div>
+            <div class="cell status"><span class="st-pill A" title="已暂存">A</span></div>
+            <div class="cell modified">2026/06/19 11:30</div>
+            <div class="cell size">3.1 KB</div>
+            <div class="cell commit"><span class="hash">f0a2c5b</span><span class="msg">feat: add status bar</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">Toolbar.tsx</span>
+            </div>
+            <div class="cell status"><span class="st-pill dot" title="无变更"></span></div>
+            <div class="cell modified">2026/06/11 10:15</div>
+            <div class="cell size">5.4 KB</div>
+            <div class="cell commit"><span class="hash">9c2f8a1</span><span class="msg">chore: toolbar icons</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">legacy.tsx</span>
+            </div>
+            <div class="cell status"><span class="st-pill D" title="已删除">D</span></div>
+            <div class="cell modified">2026/06/18 22:09</div>
+            <div class="cell size">2.0 KB</div>
+            <div class="cell commit"><span class="hash">7b5e0d3</span><span class="msg">chore: remove legacy</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">index.ts</span>
+            </div>
+            <div class="cell status"><span class="st-pill dot" title="无变更"></span></div>
+            <div class="cell modified">2026/06/10 08:00</div>
+            <div class="cell size">0.8 KB</div>
+            <div class="cell commit"><span class="hash">2a1f9c4</span><span class="msg">chore: barrel export</span></div>
+          </div>
+          <div class="list-row">
+            <div class="cell name">
+              <svg class="ficon file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              <span class="fname">conflict-merge.ts</span>
+            </div>
+            <div class="cell status"><span class="st-pill U" title="冲突">U</span></div>
+            <div class="cell modified">2026/06/19 18:45</div>
+            <div class="cell size">1.6 KB</div>
+            <div class="cell commit"><span class="hash" style="color:var(--st-conflict)">MERGE</span><span class="msg" style="color:var(--st-conflict)">合并冲突待解决</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 批量进度面板（批量操作执行时浮现） ========== -->
+    <div class="batch-panel">
+      <div class="bp-head">
+        <div class="bp-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+          批量拉取
+        </div>
+        <div class="bp-summary">
+          进度: <span class="ok">1</span> 成功 · <span class="run">1</span> 进行中 · <span class="skip">1</span> 排队 / 共 3 项
+        </div>
+        <div class="bp-spacer"></div>
+        <div class="bp-prog-wrap" title="整体进度 50%">
+          <div class="bp-prog-bar" style="width:50%"></div>
+        </div>
+        <div class="bp-actions">
+          <button class="bp-ibtn" title="最小化面板">
+            <svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.2"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+          </button>
+          <button class="bp-ibtn" title="关闭">
+            <svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.2"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="bp-list">
+        <!-- 仓库 1: 成功 -->
+        <div class="bp-row">
+          <span class="bp-status-icon ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+          </span>
+          <span class="bp-repo">frontend-app</span>
+          <span class="bp-branch">main</span>
+          <span class="bp-stage">拉取成功，合并 1 个提交</span>
+          <span class="bp-rowprog done"><div class="fill" style="width:100%"></div></span>
+        </div>
+        <!-- 仓库 2: 进行中 -->
+        <div class="bp-row">
+          <span class="bp-status-icon run">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          </span>
+          <span class="bp-repo">backend-api</span>
+          <span class="bp-branch">develop</span>
+          <span class="bp-stage run">正在接收对象…</span>
+          <span class="bp-rowprog"><div class="fill" style="width:65%"></div></span>
+        </div>
+        <!-- 仓库 3: 排队 -->
+        <div class="bp-row">
+          <span class="bp-status-icon queue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          </span>
+          <span class="bp-repo">docs-site</span>
+          <span class="bp-branch">main</span>
+          <span class="bp-stage">排队等待中…</span>
+          <span class="bp-rowprog"><div class="fill" style="width:0%"></div></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 状态栏 ========== -->
+    <div class="statusbar">
+      <!-- 当前 git 上下文（由当前路径自动推导） -->
+      <div class="sb-item sb-repo" title="当前所在 Git 仓库（自动识别）">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 8.2v7.6"/><path d="M18 10.2c0 4-6 2.8-6 6"/></svg>
+        frontend-app
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item sb-branch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M6 8.2v7.6"/><path d="M18 11.2c0 3.2-6 2-6 5.8"/></svg>
+        分支: <span class="b-name">main</span>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item" title="领先/落后远端">
+        <span class="sb-sync-ahead">↑2 领先</span>
+        <span style="color:var(--text-tertiary)">/</span>
+        <span class="sb-sync-behind">↓1 落后</span>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item sb-changes" title="工作区变更">
+        变更: <span class="num">3</span> 项 (2 修改 · 1 新增)
+      </div>
+      <div class="sb-divider"></div>
+      <!-- 批量进度汇总 -->
+      <div class="sb-item" title="批量操作进度">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--git-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+        <span style="color:var(--git-orange); font-weight:600">批量拉取</span>
+        <span style="color:var(--accent); font-weight:600">2 / 3</span>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+        选中 1 项 / 共 11 项
+      </div>
+      <div class="sb-spacer"></div>
+      <div class="sb-item" style="font-family:'Cascadia Code','Consolas',monospace">
+        D:\Projects\frontend-app\src\components
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        git 2.45.1
+      </div>
+      <div class="sb-divider"></div>
+      <!-- 语言切换器 -->
+      <div class="lang-select" title="切换界面语言">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18"/></svg>
+        <span class="lang-code">简体中文</span>
+        <span class="chev">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 5 3 3 3-3"/></svg>
+        </span>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-item sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+        就绪
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mockup-tag">GitExplore · 静态展示图 (P0) · 自动识别 .git + 多库批量操作 + 多语言</div>
+</body>
+</html>

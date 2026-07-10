@@ -1,0 +1,10 @@
+{
+  "title": "文件树",
+  "hint": "自动识别 .git 目录",
+  "detected": "已识别 {{count}} 个 Git 仓库",
+  "notGit": "非 git",
+  "selectAll": "全选",
+  "clearAll": "清除选择",
+  "drives": "本机磁盘",
+  "recent": "最近打开"
+}

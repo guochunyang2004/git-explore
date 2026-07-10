@@ -1,0 +1,10 @@
+{
+  "title": "File Tree",
+  "hint": "Auto-detect .git",
+  "detected": "{{count}} Git repos detected",
+  "notGit": "non-git",
+  "selectAll": "Select All",
+  "clearAll": "Clear Selection",
+  "drives": "Drives",
+  "recent": "Recent"
+}

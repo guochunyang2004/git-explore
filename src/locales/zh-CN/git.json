@@ -1,0 +1,18 @@
+{
+  "status": {
+    "modified": "已修改",
+    "added": "已暂存",
+    "deleted": "已删除",
+    "untracked": "未跟踪",
+    "conflict": "冲突",
+    "renamed": "重命名"
+  },
+  "badge": {
+    "ahead": "领先 {{count}}",
+    "behind": "落后 {{count}}",
+    "clean": "已同步"
+  },
+  "context": {
+    "branch": "分支"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "Settings",
+  "language": {
+    "label": "Language",
+    "system": "System Default",
+    "zh-CN": "简体中文",
+    "en": "English"
+  },
+  "scanDepth": {
+    "label": "Scan Depth",
+    "hint": "Directory depth to scan for git repos when opening a root"
+  },
+  "batchConcurrency": {
+    "label": "Batch Concurrency",
+    "hint": "Maximum repos to process in parallel (1-8)"
+  },
+  "restoreLastRoot": {
+    "label": "Restore Last Root",
+    "hint": "Reopen the last root directory on startup"
+  },
+  "repoColor": {
+    "label": "Git Repo Color",
+    "hint": "Highlight color for Git repository nodes in the file tree"
+  },
+  "save": "Save Settings",
+  "saved": "Settings Saved",
+  "reset": "Reset Defaults"
+}

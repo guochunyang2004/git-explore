@@ -1,0 +1,18 @@
+{
+  "selectedCount": "已选 {{count}} 个仓库",
+  "pull": "批量拉取",
+  "push": "批量推送",
+  "fetch": "批量获取",
+  "sync": "批量同步",
+  "commit": "批量提交",
+  "clear": "清除",
+  "title": "批量{{op}}",
+  "summary": "进度: {{success}} 成功 · {{running}} 进行中 · {{queued}} 排队 / 共 {{total}} 项",
+  "stage": {
+    "queued": "排队等待中…",
+    "receiving": "正在接收对象…",
+    "merging": "正在合并…",
+    "pushing": "正在推送…",
+    "done": "完成"
+  }
+}

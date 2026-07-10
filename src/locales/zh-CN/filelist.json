@@ -1,0 +1,12 @@
+{
+  "colName": "名称",
+  "colStatus": "Git 状态",
+  "colBranch": "分支",
+  "colAuthor": "提交人",
+  "colCommitTime": "提交时间",
+  "colModified": "修改日期",
+  "colSize": "大小",
+  "colCommit": "最后提交",
+  "selected": "选中 {{selected}} 项 / 共 {{total}} 项",
+  "untracked": "未跟踪"
+}

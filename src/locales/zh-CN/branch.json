@@ -1,0 +1,13 @@
+{
+  "title": "切换分支",
+  "searchPlaceholder": "搜索分支…",
+  "loading": "加载分支中…",
+  "empty": "未找到分支",
+  "local": "本地分支",
+  "remote": "远端分支",
+  "current": "当前",
+  "branchesCount": "个分支",
+  "switching": "切换中…",
+  "switchSuccess": "已切换到分支 {{branch}}",
+  "switchFailed": "切换分支失败"
+}

@@ -1,0 +1,18 @@
+{
+  "status": {
+    "modified": "Modified",
+    "added": "Staged",
+    "deleted": "Deleted",
+    "untracked": "Untracked",
+    "conflict": "Conflict",
+    "renamed": "Renamed"
+  },
+  "badge": {
+    "ahead": "ahead {{count}}",
+    "behind": "behind {{count}}",
+    "clean": "up to date"
+  },
+  "context": {
+    "branch": "Branch"
+  }
+}

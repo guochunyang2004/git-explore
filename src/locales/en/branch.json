@@ -1,0 +1,13 @@
+{
+  "title": "Switch Branch",
+  "searchPlaceholder": "Search branches…",
+  "loading": "Loading branches…",
+  "empty": "No branches found",
+  "local": "Local Branches",
+  "remote": "Remote Branches",
+  "current": "Current",
+  "branchesCount": "branches",
+  "switching": "Switching…",
+  "switchSuccess": "Switched to branch {{branch}}",
+  "switchFailed": "Failed to switch branch"
+}

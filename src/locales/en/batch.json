@@ -1,0 +1,18 @@
+{
+  "selectedCount": "{{count}} repos selected",
+  "pull": "Pull All",
+  "push": "Push All",
+  "fetch": "Fetch All",
+  "sync": "Sync All",
+  "commit": "Commit All",
+  "clear": "Clear",
+  "title": "Batch {{op}}",
+  "summary": "Progress: {{success}} success · {{running}} running · {{queued}} queued / {{total}} total",
+  "stage": {
+    "queued": "Queued...",
+    "receiving": "Receiving objects...",
+    "merging": "Merging...",
+    "pushing": "Pushing...",
+    "done": "Done"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "colName": "Name",
+  "colStatus": "Git Status",
+  "colBranch": "Branch",
+  "colAuthor": "Author",
+  "colCommitTime": "Commit Time",
+  "colModified": "Date modified",
+  "colSize": "Size",
+  "colCommit": "Last commit",
+  "selected": "{{selected}} of {{total}} selected",
+  "untracked": "Untracked"
+}

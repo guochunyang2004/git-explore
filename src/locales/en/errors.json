@@ -1,0 +1,12 @@
+{
+  "not_found": "Path not found: {{path}}",
+  "not_a_git_repo": "Not a Git repository",
+  "auth_failed": "Authentication failed for {{host}}",
+  "network_error": "Network error",
+  "conflict": "Merge conflict",
+  "invalid_path": "Invalid path",
+  "git_error": "Git error",
+  "cancelled": "Operation cancelled",
+  "internal": "Internal error",
+  "io_error": "I/O error"
+}

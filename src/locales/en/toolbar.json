@@ -1,0 +1,16 @@
+{
+  "openFolder": "Open Folder",
+  "batchMode": "Batch",
+  "pull": "Pull",
+  "commit": "Commit",
+  "push": "Push",
+  "branch": "Branch",
+  "branchNoRepo": "Select a Git repository first",
+  "history": "History",
+  "searchPlaceholder": "Search files, commits, branches...",
+  "goBack": "Back",
+  "goUp": "Up to Parent",
+  "scanGit": "Scan Git",
+  "scanCancel": "Stop Scan",
+  "scanning": "Scanning"
+}

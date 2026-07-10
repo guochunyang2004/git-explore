@@ -1,0 +1,19 @@
+{
+  "ok": "确定",
+  "cancel": "取消",
+  "close": "关闭",
+  "yes": "是",
+  "no": "否",
+  "confirm": "确认",
+  "delete": "删除",
+  "rename": "重命名",
+  "refresh": "刷新",
+  "search": "搜索",
+  "settings": "设置",
+  "open": "打开",
+  "loading": "加载中...",
+  "empty": "无内容",
+  "error": "错误",
+  "success": "成功",
+  "warning": "警告"
+}
