@@ -1,0 +1,16 @@
+{
+  "title": "提交变更",
+  "messageLabel": "提交信息",
+  "messagePlaceholder": "请输入提交信息…",
+  "filesLabel": "变更文件",
+  "selectAll": "全选",
+  "deselectAll": "取消全选",
+  "staged": "已暂存",
+  "unstaged": "未暂存",
+  "loading": "加载中…",
+  "noChanges": "没有变更文件",
+  "commit": "提交",
+  "committing": "提交中…",
+  "success": "提交成功",
+  "doubleClickHint": "双击文件查看差异"
+}

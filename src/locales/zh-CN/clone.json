@@ -1,0 +1,18 @@
+{
+  "title": "克隆仓库",
+  "urlLabel": "仓库地址",
+  "urlPlaceholder": "https://github.com/user/repo.git 或 git@github.com:user/repo.git",
+  "destLabel": "目标目录",
+  "destPlaceholder": "选择克隆到哪个目录",
+  "browse": "浏览…",
+  "clone": "克隆",
+  "cloning": "克隆中…",
+  "success": "克隆成功",
+  "openRepo": "打开仓库",
+  "stage": {
+    "connecting": "连接中…",
+    "receiving objects": "接收对象中…",
+    "resolving deltas": "解决差异中…",
+    "done": "完成"
+  }
+}

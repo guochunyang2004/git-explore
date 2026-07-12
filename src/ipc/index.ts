@@ -8,6 +8,7 @@ import type {
   BatchResult,
   Branch,
   CommitRef,
+  DiffContent,
   FileEntry,
   FileStatus,
   ListResult,
@@ -63,6 +64,25 @@ export const gitBranches = (repoPath: string): Promise<Branch[]> =>
 
 export const gitCheckout = (repoPath: string, branch: string): Promise<void> =>
   invoke("git_checkout", { repoPath, branch });
+
+export const gitClone = (url: string, dest: string): Promise<string> =>
+  invoke("git_clone", { url, dest });
+
+export const gitPull = (repoPath: string): Promise<void> =>
+  invoke("git_pull", { repoPath });
+
+export const gitPush = (repoPath: string): Promise<void> =>
+  invoke("git_push", { repoPath });
+
+export const gitCommit = (
+  repoPath: string,
+  message: string,
+  filePaths: string[]
+): Promise<CommitRef> =>
+  invoke("git_commit", { repoPath, message, filePaths });
+
+export const gitDiff = (repoPath: string, filePath: string): Promise<DiffContent> =>
+  invoke("git_diff", { repoPath, filePath });
 
 // ============ 批量命令 ============
 export const batchRun = (op: BatchOp, repoPaths: string[]): Promise<string> =>

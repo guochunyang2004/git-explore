@@ -1,0 +1,12 @@
+{
+  "pullTitle": "拉取",
+  "pushTitle": "推送",
+  "pullSuccess": "拉取成功",
+  "pushSuccess": "推送成功",
+  "pullFailed": "拉取失败",
+  "pushFailed": "推送失败",
+  "connecting": "连接远程…",
+  "executing": "执行中…",
+  "done": "完成",
+  "noRepo": "请先选中一个 Git 仓库"
+}

@@ -6,12 +6,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   FolderOpenIcon, PullIcon, CommitIcon, PushIcon, GitBranchIcon,
   HistoryIcon, RefreshIcon, SearchIcon, GridIcon, SettingsIcon,
-  ArrowLeftIcon, ArrowUpIcon,
+  ArrowLeftIcon, ArrowUpIcon, CloneIcon,
 } from "@/components/icons";
 import { useWorkspaceStore, useBatchSelectionStore, useScanStore, useGitReposStore } from "@/stores";
-import { scanGitRepos, scanCancel } from "@/ipc";
+import { scanGitRepos, scanCancel, gitPull, gitPush, onEvent } from "@/ipc";
 import { BranchSwitchDialog } from "@/components/BranchSwitchDialog";
-import { useState } from "react";
+import { CloneDialog } from "@/components/CloneDialog";
+import { CommitDialog } from "@/components/CommitDialog";
+import { useState, useEffect } from "react";
 
 export function ToolBar({ onSettings }: { onSettings: () => void }) {
   const { t } = useTranslation();
@@ -30,6 +32,57 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
   const repos = useGitReposStore((s) => s.repos);
   const selectedEntry = useWorkspaceStore((s) => s.selectedEntry);
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+  const [gitOpProgress, setGitOpProgress] = useState<{ op: string; stage: string; percent: number; repoPath: string } | null>(null);
+  const [gitOpError, setGitOpError] = useState<string | null>(null);
+  const [gitOpSuccess, setGitOpSuccess] = useState<string | null>(null);
+
+  // 监听 git:progress 事件（用于 pull/push 进度）
+  useEffect(() => {
+    if (!gitOpProgress) return;
+    const unlisten = onEvent<{ repoPath: string; stage: string; percent: number }>(
+      "git:progress",
+      (payload) => {
+        setGitOpProgress((prev) => prev ? { ...prev, stage: payload.stage, percent: payload.percent } : prev);
+      }
+    );
+    return () => { unlisten.then((fn) => fn()); };
+  }, [gitOpProgress?.op]);
+
+  const handlePull = async () => {
+    if (!selectedRepoPath) return;
+    setGitOpError(null);
+    setGitOpSuccess(null);
+    setGitOpProgress({ op: "pull", stage: "connecting", percent: 10, repoPath: selectedRepoPath });
+    try {
+      await gitPull(selectedRepoPath);
+      setGitOpSuccess(t("gitops:pullSuccess"));
+      const targetPath = currentDir || rootPath;
+      if (targetPath) scanGitRepos(targetPath);
+    } catch (e: any) {
+      setGitOpError(e?.message || t("gitops:pullFailed"));
+    } finally {
+      setTimeout(() => setGitOpProgress(null), 1500);
+    }
+  };
+
+  const handlePush = async () => {
+    if (!selectedRepoPath) return;
+    setGitOpError(null);
+    setGitOpSuccess(null);
+    setGitOpProgress({ op: "push", stage: "connecting", percent: 10, repoPath: selectedRepoPath });
+    try {
+      await gitPush(selectedRepoPath);
+      setGitOpSuccess(t("gitops:pushSuccess"));
+      const targetPath = currentDir || rootPath;
+      if (targetPath) scanGitRepos(targetPath);
+    } catch (e: any) {
+      setGitOpError(e?.message || t("gitops:pushFailed"));
+    } finally {
+      setTimeout(() => setGitOpProgress(null), 1500);
+    }
+  };
 
   const handleOpen = async () => {
     const selected = await open({ directory: true, multiple: false });
@@ -41,7 +94,6 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
   const handleScan = async () => {
     const targetPath = currentDir || rootPath;
     if (!targetPath) return;
-    // 清空之前的扫描结果
     setRepos([]);
     await scanGitRepos(targetPath);
   };
@@ -57,10 +109,8 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
   // 确定当前选中目录对应的 Git 仓库路径
   const selectedRepoPath = (() => {
     if (!selectedEntry) return null;
-    // 直接匹配
     const direct = repos.find((r) => r.path === selectedEntry);
     if (direct) return direct.path;
-    // 查找包含 selectedEntry 的仓库
     const parent = repos.find((r) => selectedEntry.startsWith(r.path + "\\") || selectedEntry.startsWith(r.path + "/"));
     if (parent) return parent.path;
     return null;
@@ -139,9 +189,46 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
         </button>
       )}
       {divider}
-      <button className="tb-btn" style={btnStyle(false)} title={t("toolbar:pull")}><PullIcon size={15} /> {t("toolbar:pull")}</button>
-      <button className="tb-btn" style={btnStyle()} title={t("toolbar:commit")}><CommitIcon size={15} /> {t("toolbar:commit")}</button>
-      <button className="tb-btn" style={btnStyle()} title={t("toolbar:push")}><PushIcon size={15} /> {t("toolbar:push")}</button>
+      {/* 克隆仓库 */}
+      <button
+        className="tb-btn"
+        style={{ ...btnStyle(), border: "1px solid var(--git-orange)", color: "var(--git-orange)" }}
+        title={t("toolbar:clone")}
+        onClick={() => setCloneDialogOpen(true)}
+      >
+        <CloneIcon size={15} /> {t("toolbar:clone")}
+      </button>
+      {divider}
+      {/* 拉取 */}
+      <button
+        className="tb-btn"
+        style={selectedRepoPath ? btnStyle() : disabledBtnStyle}
+        title={selectedRepoPath ? t("toolbar:pull") : t("gitops:noRepo")}
+        onClick={handlePull}
+        disabled={!selectedRepoPath}
+      >
+        <PullIcon size={15} /> {t("toolbar:pull")}
+      </button>
+      {/* 提交 */}
+      <button
+        className="tb-btn"
+        style={selectedRepoPath ? btnStyle() : disabledBtnStyle}
+        title={selectedRepoPath ? t("toolbar:commit") : t("gitops:noRepo")}
+        onClick={() => setCommitDialogOpen(true)}
+        disabled={!selectedRepoPath}
+      >
+        <CommitIcon size={15} /> {t("toolbar:commit")}
+      </button>
+      {/* 推送 */}
+      <button
+        className="tb-btn"
+        style={selectedRepoPath ? btnStyle() : disabledBtnStyle}
+        title={selectedRepoPath ? t("toolbar:push") : t("gitops:noRepo")}
+        onClick={handlePush}
+        disabled={!selectedRepoPath}
+      >
+        <PushIcon size={15} /> {t("toolbar:push")}
+      </button>
       {divider}
       <button
         className="tb-btn"
@@ -174,11 +261,76 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
         repoPath={selectedRepoPath || ""}
         onClose={() => setBranchDialogOpen(false)}
         onSwitched={() => {
-          // 切换后重新扫描当前目录
           const targetPath = currentDir || rootPath;
           if (targetPath) scanGitRepos(targetPath);
         }}
       />
+      {/* 克隆仓库弹窗 */}
+      <CloneDialog
+        open={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+      />
+      {/* 提交弹窗 */}
+      <CommitDialog
+        open={commitDialogOpen}
+        repoPath={selectedRepoPath || ""}
+        onClose={() => setCommitDialogOpen(false)}
+        onCommitted={() => {
+          const targetPath = currentDir || rootPath;
+          if (targetPath) scanGitRepos(targetPath);
+        }}
+      />
+      {/* Pull/Push 进度提示 */}
+      {gitOpProgress && (
+        <div style={{
+          position: "fixed", bottom: 40, right: 16, zIndex: 1000,
+          background: "var(--bg-surface)", border: "1px solid var(--border)",
+          borderRadius: 8, padding: "12px 16px", minWidth: 280,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: 12,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            {gitOpProgress.op === "pull" ? <PullIcon size={14} /> : <PushIcon size={14} />}
+            <span style={{ fontWeight: 600 }}>
+              {gitOpProgress.op === "pull" ? t("gitops:pullTitle") : t("gitops:pushTitle")}
+            </span>
+            <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>
+              {gitOpProgress.stage} {gitOpProgress.percent}%
+            </span>
+          </div>
+          <div style={{ height: 4, background: "var(--bg-app)", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${gitOpProgress.percent}%`,
+              background: "var(--git-orange)", borderRadius: 2, transition: "width 0.2s ease",
+            }} />
+          </div>
+        </div>
+      )}
+      {/* Pull/Push 错误提示 */}
+      {gitOpError && !gitOpProgress && (
+        <div style={{
+          position: "fixed", bottom: 40, right: 16, zIndex: 1000,
+          background: "var(--bg-surface)", border: "1px solid rgba(239,68,68,0.3)",
+          borderRadius: 8, padding: "10px 14px", minWidth: 280, maxWidth: 400,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: 12, color: "#ef4444",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <span>{gitOpError}</span>
+          <button onClick={() => setGitOpError(null)} style={{ marginLeft: 8, border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 11 }}>✕</button>
+        </div>
+      )}
+      {/* Pull/Push 成功提示 */}
+      {gitOpSuccess && !gitOpProgress && (
+        <div style={{
+          position: "fixed", bottom: 40, right: 16, zIndex: 1000,
+          background: "var(--bg-surface)", border: "1px solid rgba(34,197,94,0.3)",
+          borderRadius: 8, padding: "10px 14px", minWidth: 280, maxWidth: 400,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: 12, color: "#22c55e",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <span>{gitOpSuccess}</span>
+          <button onClick={() => setGitOpSuccess(null)} style={{ marginLeft: 8, border: "none", background: "transparent", color: "#22c55e", cursor: "pointer", fontSize: 11 }}>✕</button>
+        </div>
+      )}
     </div>
   );
 }

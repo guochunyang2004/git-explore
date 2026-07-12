@@ -12,5 +12,6 @@
   "goUp": "返回上级目录",
   "scanGit": "扫描Git",
   "scanCancel": "停止扫描",
-  "scanning": "扫描中"
+  "scanning": "扫描中",
+  "clone": "克隆"
 }

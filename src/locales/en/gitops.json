@@ -1,0 +1,12 @@
+{
+  "pullTitle": "Pull",
+  "pushTitle": "Push",
+  "pullSuccess": "Pull successful",
+  "pushSuccess": "Push successful",
+  "pullFailed": "Pull failed",
+  "pushFailed": "Push failed",
+  "connecting": "Connecting remote…",
+  "executing": "Executing…",
+  "done": "Done",
+  "noRepo": "Select a Git repository first"
+}

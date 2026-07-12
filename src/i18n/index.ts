@@ -14,6 +14,10 @@ import settings from "@/locales/zh-CN/settings.json";
 import errors from "@/locales/zh-CN/errors.json";
 import addressbar from "@/locales/zh-CN/addressbar.json";
 import branch from "@/locales/zh-CN/branch.json";
+import clone from "@/locales/zh-CN/clone.json";
+import commit from "@/locales/zh-CN/commit.json";
+import gitops from "@/locales/zh-CN/gitops.json";
+import diff from "@/locales/zh-CN/diff.json";
 import commonEn from "@/locales/en/common.json";
 import menuEn from "@/locales/en/menu.json";
 import toolbarEn from "@/locales/en/toolbar.json";
@@ -26,6 +30,10 @@ import settingsEn from "@/locales/en/settings.json";
 import errorsEn from "@/locales/en/errors.json";
 import addressbarEn from "@/locales/en/addressbar.json";
 import branchEn from "@/locales/en/branch.json";
+import cloneEn from "@/locales/en/clone.json";
+import commitEn from "@/locales/en/commit.json";
+import gitopsEn from "@/locales/en/gitops.json";
+import diffEn from "@/locales/en/diff.json";
 
 export const LANGUAGES = [
   { code: "zh-CN", name: "简体中文", short: "中" },
@@ -43,8 +51,8 @@ function detectSystemLanguage(): LanguageCode {
 
 i18n.use(initReactI18next).init({
   resources: {
-    "zh-CN": { common, menu, toolbar, filetree, filelist, git, batch, statusbar, settings, errors, addressbar, branch },
-    en: { common: commonEn, menu: menuEn, toolbar: toolbarEn, filetree: filetreeEn, filelist: filelistEn, git: gitEn, batch: batchEn, statusbar: statusbarEn, settings: settingsEn, errors: errorsEn, addressbar: addressbarEn, branch: branchEn },
+    "zh-CN": { common, menu, toolbar, filetree, filelist, git, batch, statusbar, settings, errors, addressbar, branch, clone, commit, gitops, diff },
+    en: { common: commonEn, menu: menuEn, toolbar: toolbarEn, filetree: filetreeEn, filelist: filelistEn, git: gitEn, batch: batchEn, statusbar: statusbarEn, settings: settingsEn, errors: errorsEn, addressbar: addressbarEn, branch: branchEn, clone: cloneEn, commit: commitEn, gitops: gitopsEn, diff: diffEn },
   },
   lng: detectSystemLanguage(),
   fallbackLng: "zh-CN",

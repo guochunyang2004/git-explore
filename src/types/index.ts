@@ -36,8 +36,16 @@ export interface CommitRef {
 }
 
 export interface FileStatus {
+  path: string;
   code: StatusCode;
   staged: boolean;
+}
+
+export interface DiffContent {
+  path: string;
+  oldContent: string;
+  newContent: string;
+  isBinary: boolean;
 }
 
 export type StatusCode = "modified" | "added" | "deleted" | "untracked" | "conflict" | "renamed";

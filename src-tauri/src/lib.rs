@@ -76,6 +76,11 @@ pub fn run() {
             commands::git::git_log,
             commands::git::git_branches,
             commands::git::git_checkout,
+            commands::git::git_clone,
+            commands::git::git_pull,
+            commands::git::git_push,
+            commands::git::git_commit,
+            commands::git::git_diff,
             // 文件/系统命令
             commands::fs::fs_open_external,
             commands::fs::fs_open_terminal,

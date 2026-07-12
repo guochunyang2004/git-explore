@@ -1,0 +1,18 @@
+{
+  "title": "Clone Repository",
+  "urlLabel": "Repository URL",
+  "urlPlaceholder": "https://github.com/user/repo.git or git@github.com:user/repo.git",
+  "destLabel": "Destination",
+  "destPlaceholder": "Select a directory to clone into",
+  "browse": "Browse…",
+  "clone": "Clone",
+  "cloning": "Cloning…",
+  "success": "Clone successful",
+  "openRepo": "Open Repository",
+  "stage": {
+    "connecting": "Connecting…",
+    "receiving objects": "Receiving objects…",
+    "resolving deltas": "Resolving deltas…",
+    "done": "Done"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "title": "Commit Changes",
+  "messageLabel": "Commit Message",
+  "messagePlaceholder": "Enter commit message...",
+  "filesLabel": "Changed Files",
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All",
+  "staged": "Staged",
+  "unstaged": "Unstaged",
+  "loading": "Loading...",
+  "noChanges": "No changes",
+  "commit": "Commit",
+  "committing": "Committing...",
+  "success": "Commit successful",
+  "doubleClickHint": "Double-click file to view diff"
+}

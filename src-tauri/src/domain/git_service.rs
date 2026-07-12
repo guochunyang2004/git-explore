@@ -4,7 +4,7 @@
 
 use crate::infra::error::AppResult;
 use crate::infra::git2_adapter::{Git2Adapter, GitOps};
-use crate::types::{Branch, CommitRef, FileStatus};
+use crate::types::{Branch, CommitRef, DiffContent, FileStatus};
 use std::sync::Arc;
 
 pub struct GitService {
@@ -51,6 +51,14 @@ impl GitService {
 
     pub fn push(&self, repo_path: &str, progress: &mut dyn FnMut(&str, u8)) -> AppResult<()> {
         self.adapter.push(repo_path, progress)
+    }
+
+    pub fn clone_repo(&self, url: &str, dest: &str, progress: &mut dyn FnMut(&str, u8)) -> AppResult<()> {
+        self.adapter.clone_repo(url, dest, progress)
+    }
+
+    pub fn diff(&self, repo_path: &str, file_path: &str) -> AppResult<DiffContent> {
+        self.adapter.diff(repo_path, file_path)
     }
 }
 

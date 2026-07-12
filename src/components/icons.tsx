@@ -98,3 +98,7 @@ export const MaximizeIcon = ({ size = 12, ...p }: IconProps) => (
 export const DriveIcon = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size)} {...p}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 6V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2" /><circle cx="8" cy="14" r="1.5" /><circle cx="16" cy="14" r="1.5" /></svg>
 );
+
+export const CloneIcon = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size)} {...p}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /><rect x="3" y="3" width="18" height="18" rx="2" opacity="0" /></svg>
+);

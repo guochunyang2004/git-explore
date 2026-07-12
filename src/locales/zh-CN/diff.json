@@ -1,0 +1,15 @@
+{
+  "title": "文件差异对比",
+  "loading": "加载中",
+  "loadFailed": "加载差异失败",
+  "binaryFile": "二进制文件无法显示差异",
+  "noChanges": "无差异",
+  "original": "原始内容",
+  "modified": "修改后",
+  "workingCopy": "工作区",
+  "oldLine": "旧",
+  "newLine": "新",
+  "added": "新增",
+  "removed": "删除",
+  "modified_rows": "修改"
+}

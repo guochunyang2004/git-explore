@@ -5,7 +5,7 @@
 //! - pull/push/fetch: 通过 OS git 命令行（git2 远端支持不完整）
 
 use crate::infra::error::{AppError, AppResult, ErrorCode};
-use crate::types::{Branch, CommitRef, FileStatus, StatusCode};
+use crate::types::{Branch, CommitRef, DiffContent, FileStatus, StatusCode};
 use git2;
 use std::path::Path;
 use std::process::Command;
@@ -18,6 +18,10 @@ pub trait GitOps: Send + Sync {
     fn branches(&self, repo_path: &str) -> AppResult<Vec<Branch>>;
     fn checkout(&self, repo_path: &str, branch: &str) -> AppResult<()>;
     fn commit(&self, repo_path: &str, message: &str, file_paths: &[String]) -> AppResult<CommitRef>;
+    fn diff(&self, repo_path: &str, file_path: &str) -> AppResult<DiffContent>;
+
+    // 克隆
+    fn clone_repo(&self, url: &str, dest: &str, progress: &mut dyn FnMut(&str, u8)) -> AppResult<()>;
 
     // 远端操作（进度回调）
     fn fetch(&self, repo_path: &str, progress: &mut dyn FnMut(&str, u8)) -> AppResult<()>;
@@ -104,7 +108,8 @@ impl GitOps for Git2Adapter {
                 || status.is_index_renamed()
                 || status.is_index_typechange();
 
-            result.push(FileStatus { code, staged });
+            let path = entry.path().unwrap_or("").to_string();
+            result.push(FileStatus { path, code, staged });
         }
         Ok(result)
     }
@@ -253,6 +258,55 @@ impl GitOps for Git2Adapter {
         Ok(())
     }
 
+    // ============ clone ============
+
+    fn clone_repo(&self, url: &str, dest: &str, progress: &mut dyn FnMut(&str, u8)) -> AppResult<()> {
+        // 先发送 connecting 状态
+        progress("connecting", 0);
+
+        // 使用 git2 的 clone，配合进度回调
+        let mut cb = git2::RemoteCallbacks::new();
+        cb.transfer_progress(|p| {
+            let received = p.received_objects();
+            let total = p.total_objects();
+            let indexed_deltas = p.indexed_deltas();
+            let total_deltas = p.total_deltas();
+
+            if total > 0 {
+                let pct = if total_deltas > 0 && indexed_deltas > 0 {
+                    // 阶段2: resolving deltas
+                    ((received as f32 / total as f32) * 50.0
+                        + (indexed_deltas as f32 / total_deltas as f32) * 50.0) as u8
+                } else {
+                    // 阶段1: receiving objects
+                    ((received as f32 / total as f32) * 100.0) as u8
+                };
+                let stage = if total_deltas > 0 && received >= total {
+                    "resolving deltas"
+                } else {
+                    "receiving objects"
+                };
+                progress(stage, pct.min(100));
+            }
+            true
+        });
+
+        let mut fo = git2::FetchOptions::new();
+        fo.remote_callbacks(cb);
+
+        git2::build::RepoBuilder::new()
+            .fetch_options(fo)
+            .clone(url, Path::new(dest))
+            .map_err(|e| {
+                let msg = format!("克隆失败: {e}");
+                AppError::new(ErrorCode::GitError, "errors.git.clone", &msg)
+                    .with_param("url", url)
+                    .with_param("dest", dest)
+            })?;
+        progress("done", 100);
+        Ok(())
+    }
+
     // ============ commit ============
 
     fn commit(&self, repo_path: &str, message: &str, file_paths: &[String]) -> AppResult<CommitRef> {
@@ -302,6 +356,56 @@ impl GitOps for Git2Adapter {
             message: message.to_string(),
             author: signature.name().unwrap_or("unknown").to_string(),
             time: signature.when().seconds(),
+        })
+    }
+
+    // ============ diff ============
+
+    fn diff(&self, repo_path: &str, file_path: &str) -> AppResult<DiffContent> {
+        let repo = Self::open_repo(repo_path)?;
+        let abs_path = Path::new(repo_path).join(file_path);
+
+        // 读取工作区版本（新内容）
+        let new_content = std::fs::read_to_string(&abs_path).unwrap_or_default();
+
+        // 检查是否为二进制文件
+        let is_binary = std::fs::read(&abs_path)
+            .map(|bytes| bytes.iter().any(|&b| b == 0))
+            .unwrap_or(false);
+
+        if is_binary {
+            return Ok(DiffContent {
+                path: file_path.to_string(),
+                old_content: String::new(),
+                new_content: String::new(),
+                is_binary: true,
+            });
+        }
+
+        // 获取 HEAD 版本（旧内容）
+        let old_content = {
+            let head = repo.head()?;
+            let head_commit = head.peel_to_commit()?;
+            let head_tree = head_commit.tree()?;
+
+            // 在 HEAD tree 中查找该文件
+            match head_tree.get_path(Path::new(file_path)) {
+                Ok(entry) => {
+                    let blob = repo.find_blob(entry.id())?;
+                    String::from_utf8_lossy(blob.content()).to_string()
+                }
+                Err(_) => {
+                    // 文件不在 HEAD 中（新增文件）
+                    String::new()
+                }
+            }
+        };
+
+        Ok(DiffContent {
+            path: file_path.to_string(),
+            old_content,
+            new_content,
+            is_binary: false,
         })
     }
 

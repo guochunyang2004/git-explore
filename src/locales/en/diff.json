@@ -1,0 +1,15 @@
+{
+  "title": "File Diff",
+  "loading": "Loading",
+  "loadFailed": "Failed to load diff",
+  "binaryFile": "Binary file cannot be diffed",
+  "noChanges": "No changes",
+  "original": "Original",
+  "modified": "Modified",
+  "workingCopy": "Working Copy",
+  "oldLine": "Old",
+  "newLine": "New",
+  "added": "Added",
+  "removed": "Removed",
+  "modified_rows": "Modified"
+}

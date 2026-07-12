@@ -72,8 +72,24 @@ pub struct CommitRef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileStatus {
+    /// 文件相对仓库根目录的路径
+    pub path: String,
     pub code: StatusCode,
     pub staged: bool,
+}
+
+/// 文件差异内容
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffContent {
+    /// 文件路径
+    pub path: String,
+    /// 原始内容（HEAD 版本），新增文件为空字符串
+    pub old_content: String,
+    /// 修改后内容（工作区版本），删除文件为空字符串
+    pub new_content: String,
+    /// 文件是否为二进制文件
+    pub is_binary: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
