@@ -87,7 +87,13 @@ impl GitOps for Git2Adapter {
         let repo = Self::open_repo(repo_path)?;
         let mut result = Vec::new();
 
-        let statuses = repo.statuses(None)?;
+        let mut opts = git2::StatusOptions::new();
+        opts.include_untracked(true);
+        opts.recurse_untracked_dirs(true);
+        opts.exclude_submodules(true);
+        // 默认不包含 gitignore 文件（不调用 include_ignored）
+
+        let statuses = repo.statuses(Some(&mut opts))?;;
         for entry in statuses.iter() {
             let status = entry.status();
             let code = if status.is_index_new() || status.is_wt_new() {
@@ -319,11 +325,22 @@ impl GitOps for Git2Adapter {
             let mut staged = false;
             for fp in file_paths {
                 let p = Path::new(fp);
-                if let Ok(relative) = p.strip_prefix(repo_path) {
-                    let rel = relative.to_string_lossy().replace('\\', "/");
-                    index.add_path(Path::new(&rel))?;
-                    staged = true;
+                // 如果是绝对路径，尝试去掉仓库前缀；如果是相对路径，直接使用
+                let rel = if p.is_absolute() {
+                    p.strip_prefix(repo_path)
+                        .unwrap_or(p)
+                        .to_string_lossy()
+                        .replace('\\', "/")
+                } else {
+                    // 已经是相对路径，标准化反斜杠
+                    fp.replace('\\', "/")
+                };
+                if let Err(e) = index.add_path(Path::new(&rel)) {
+                    // 文件可能已被删除或不存在，跳过
+                    eprintln!("Warning: failed to add path {rel}: {e}");
+                    continue;
                 }
+                staged = true;
             }
             if staged {
                 index.write()?;
