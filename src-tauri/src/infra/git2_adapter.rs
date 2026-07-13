@@ -454,17 +454,81 @@ impl Default for Git2Adapter {
 // 辅助：通过 OS git 命令行执行远端操作
 // ============================================================
 
+/// 查找 git 可执行文件的完整路径
+/// 在 Windows 上，Tauri 应用可能不继承用户的 PATH 环境变量
+fn find_git_exe() -> String {
+    // 1. 尝试常见的 Windows 安装路径
+    #[cfg(target_os = "windows")]
+    {
+        let candidates = [
+            r"C:\Program Files\Git\bin\git.exe",
+            r"C:\Program Files\Git\cmd\git.exe",
+            r"C:\Program Files (x86)\Git\bin\git.exe",
+            r"C:\Program Files (x86)\Git\cmd\git.exe",
+            r"C:\Users\Administrator\AppData\Local\Programs\Git\bin\git.exe",
+            r"C:\Users\Administrator\AppData\Local\Programs\Git\cmd\git.exe",
+        ];
+        for path in &candidates {
+            if std::path::Path::new(path).exists() {
+                return path.to_string();
+            }
+        }
+    }
+
+    // 2. 尝试通过 `where git`（Windows）或 `which git`（Unix）查找
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("where")
+            .arg("git")
+            .output()
+        {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                if let Some(first_line) = stdout.lines().next() {
+                    let path = first_line.trim();
+                    if !path.is_empty() && std::path::Path::new(path).exists() {
+                        return path.to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("git")
+            .output()
+        {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let path = stdout.trim();
+                if !path.is_empty() {
+                    return path.to_string();
+                }
+            }
+        }
+    }
+
+    // 3. 回退到 "git"，让 OS 自行查找
+    "git".to_string()
+}
+
 fn run_git_cmd(repo_path: &str, args: &[&str], progress: &mut dyn FnMut(&str, u8)) -> AppResult<()> {
     progress("执行中…", 30);
 
-    let output = Command::new("git")
+    // 在 Windows 上，Tauri 应用可能不继承用户的 PATH，
+    // 需要尝试找到 git 的完整路径
+    let git_exe = find_git_exe();
+
+    let output = Command::new(&git_exe)
         .args(args)
         .current_dir(repo_path)
         .output()
         .map_err(|e| {
-            let msg = format!("启动 git 失败: {e}");
+            let msg = format!("启动 git 失败: {e}（尝试路径: {git_exe}）");
             AppError::new(ErrorCode::GitError, "errors.git.cmd", &msg)
-        })?;
+        })?;;
 
     if output.status.success() {
         progress("完成", 100);
