@@ -241,25 +241,71 @@ impl GitOps for Git2Adapter {
     fn checkout(&self, repo_path: &str, branch: &str) -> AppResult<()> {
         let repo = Self::open_repo(repo_path)?;
 
-        // 查找分支引用
-        let ref_name = if branch.starts_with("origin/") || branch.contains('/') {
-            // 远端分支
-            format!("refs/remotes/{}", branch)
+        // 判断是本地分支还是远端分支
+        let is_remote = branch.starts_with("origin/") || (branch.contains('/') && !branch.starts_with("refs/"));
+
+        if is_remote {
+            // 远端分支：提取纯分支名（去掉 origin/ 前缀）
+            let short_name = if branch.starts_with("origin/") {
+                &branch[7..]
+            } else {
+                // 其他 remote 前缀，取最后一个 / 后面的部分
+                branch.rsplit('/').next().unwrap_or(branch)
+            };
+
+            let local_ref = format!("refs/heads/{}", short_name);
+            let remote_ref = format!("refs/remotes/{}", branch);
+
+            // 检查本地分支是否已存在
+            let local_exists = repo.find_reference(&local_ref).is_ok();
+
+            if local_exists {
+                // 本地分支已存在，直接 checkout 本地分支
+                repo.set_head(&local_ref)?;
+                repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+            } else {
+                // 本地分支不存在，从远端分支创建本地分支
+                let remote_reference = repo.find_reference(&remote_ref)
+                    .map_err(|e| AppError::new(
+                        ErrorCode::GitError,
+                        "git.branch_not_found",
+                        &format!("远端分支 '{}' 不存在: {}", branch, e),
+                    ))?;
+
+                let remote_oid = remote_reference.target()
+                    .ok_or_else(|| AppError::new(
+                        ErrorCode::GitError,
+                        "git.branch_not_found",
+                        &format!("远端分支 '{}' 没有有效目标", branch),
+                    ))?;
+
+                // 创建本地分支指向远端分支的 commit
+                let commit = repo.find_commit(remote_oid)?;
+                repo.branch(short_name, &commit, false)?;
+
+                // 设置上游跟踪
+                if let Ok(mut local_branch) = repo.find_branch(short_name, git2::BranchType::Local) {
+                    let upstream_name = branch.split('/').nth(1).unwrap_or(short_name);
+                    let _ = local_branch.set_upstream(Some(upstream_name));
+                }
+
+                // checkout 到新创建的本地分支
+                repo.set_head(&local_ref)?;
+                repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+            }
         } else {
-            // 本地分支
-            format!("refs/heads/{}", branch)
-        };
+            // 本地分支：直接 checkout
+            let ref_name = format!("refs/heads/{}", branch);
+            let target = repo.find_reference(&ref_name)
+                .map_err(|e| AppError::new(
+                    ErrorCode::GitError,
+                    "git.branch_not_found",
+                    &format!("分支 '{}' 不存在: {}", branch, e),
+                ))?;
 
-        let target = repo.find_reference(&ref_name)
-            .map_err(|e| AppError::new(
-                ErrorCode::GitError,
-                "git.branch_not_found",
-                &format!("分支 '{}' 不存在: {}", branch, e),
-            ))?;
-
-        // 执行 checkout
-        repo.set_head(target.name().unwrap_or(&ref_name))?;
-        repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+            repo.set_head(target.name().unwrap_or(&ref_name))?;
+            repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+        }
 
         Ok(())
     }

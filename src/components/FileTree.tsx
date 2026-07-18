@@ -99,15 +99,16 @@ function TreeNode({ entry, depth, reposMap, currentPath }: {
   const handleClick = useCallback(() => {
     setSelected(entry.path);
     if (entry.isDir) {
-      // 单击：仅展开/折叠，不导航右侧列表（参考资源管理器）
+      // 单击：展开/折叠 + 同步导航右侧列表
       toggleExpand(entry.path);
+      navigateTo(entry.path);
       // 根据设置决定是否自动扫描该目录的 Git 仓库
       const autoScan = useConfigStore.getState().autoScanGit;
       if (autoScan && !scanning) {
         scanGitRepos(entry.path);
       }
     }
-  }, [entry, setSelected, toggleExpand, scanning]);
+  }, [entry, setSelected, toggleExpand, navigateTo, scanning]);
 
   return (
     <>
