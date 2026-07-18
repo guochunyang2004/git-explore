@@ -50,6 +50,8 @@ pub struct Preferences {
     pub log_level: String,
     /// Git 仓库节点高亮颜色（十六进制，如 #f04e23）
     pub repo_color: String,
+    /// 打开目录时是否自动扫描 Git 仓库
+    pub auto_scan_git: bool,
 }
 
 impl Default for AppConfig {
@@ -76,6 +78,7 @@ impl Default for AppConfig {
                 restore_last_root: true,
                 log_level: "info".to_string(),
                 repo_color: "#f04e23".to_string(),
+                auto_scan_git: false,
             },
         }
     }
@@ -164,6 +167,7 @@ impl ConfigManager {
         if cfg.preferences.repo_color.is_empty() {
             cfg.preferences.repo_color = "#f04e23".to_string();
         }
+        // auto_scan_git 默认 false，无需额外迁移
     }
 }
 

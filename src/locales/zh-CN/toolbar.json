@@ -13,5 +13,7 @@
   "scanGit": "扫描Git",
   "scanCancel": "停止扫描",
   "scanning": "扫描中",
-  "clone": "克隆"
+  "clone": "克隆",
+  "pullAll": "批量拉取",
+  "pullAllTitle": "拉取当前目录下所有 Git 仓库的最新版"
 }

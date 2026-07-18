@@ -22,6 +22,10 @@
     "label": "Git Repo Color",
     "hint": "Highlight color for Git repository nodes in the file tree"
   },
+  "autoScanGit": {
+    "label": "Auto Scan Git Repos",
+    "hint": "Automatically scan for Git repos when clicking a directory. When off, use the scan button manually"
+  },
   "save": "Save Settings",
   "saved": "Settings Saved",
   "reset": "Reset Defaults"

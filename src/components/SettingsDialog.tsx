@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { configGet, configSave } from "@/ipc";
 import type { SettingsDto } from "@/ipc";
+import { useConfigStore } from "@/stores";
 
 interface Props {
   open: boolean;
@@ -35,6 +36,7 @@ const DEFAULTS: SettingsDto = {
   batchConcurrency: 4,
   restoreLastRoot: true,
   repoColor: "#f04e23",
+  autoScanGit: false,
 };
 
 export function SettingsDialog({ open, onClose }: Props) {
@@ -66,6 +68,8 @@ export function SettingsDialog({ open, onClose }: Props) {
       }
       // 应用 Git 仓库颜色到 CSS 变量
       applyRepoColor(settings.repoColor);
+      // 同步自动扫描设置到 config store
+      useConfigStore.getState().setAutoScanGit(settings.autoScanGit);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -210,6 +214,19 @@ export function SettingsDialog({ open, onClose }: Props) {
               </div>
             </div>
             <span style={hintStyle}>{t("repoColor.hint")}</span>
+          </div>
+
+          {/* 自动扫描 Git */}
+          <div style={rowStyle}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={settings.autoScanGit}
+                onChange={(e) => update({ autoScanGit: e.target.checked })}
+              />
+              <span style={labelStyle}>{t("autoScanGit.label")}</span>
+            </label>
+            <span style={hintStyle}>{t("autoScanGit.hint")}</span>
           </div>
         </div>
 

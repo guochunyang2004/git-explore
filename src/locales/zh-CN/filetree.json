@@ -6,5 +6,6 @@
   "selectAll": "全选",
   "clearAll": "清除选择",
   "drives": "本机磁盘",
-  "recent": "最近打开"
+  "recent": "最近打开",
+  "thisPC": "此电脑"
 }

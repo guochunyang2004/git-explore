@@ -114,15 +114,78 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const ipc = await loadIpc();
       const entries = await ipc.workspaceOpen(rootPath);
-      // 历史栈: [""(home), rootPath] — 根目录时 canGoBack=true, canGoUp=true
+
+      // 构建路径链: D:\gitee\gcy => ["D:\\", "D:\\gitee", "D:\\gitee\\gcy"]
+      const pathChain: string[] = [];
+      const normalized = rootPath.replace(/[\\/]+$/, "");
+      const driveMatch = /^([A-Za-z]:)([\\/].*)?$/.exec(normalized);
+      if (driveMatch) {
+        const driveRoot = driveMatch[1] + "\\";
+        pathChain.push(driveRoot);
+        const rest = driveMatch[2] || "";
+        const parts = rest.split(/[\\/]/).filter(Boolean);
+        let acc = driveRoot;
+        for (const p of parts) {
+          acc = acc + (acc.endsWith("\\") ? "" : "\\") + p;
+          pathChain.push(acc);
+        }
+      }
+
+      // 预加载路径链每一级的子目录到 treeChildren
+      const treeChildren = new Map<string, FileEntry[]>();
+      const expandedPaths = new Set<string>();
+      // "此电脑" 虚拟根节点始终展开
+      expandedPaths.add("");
+      // 磁盘列表作为 "此电脑" 的子节点（treeEntries）
+      const state = get();
+      const allDriveEntries: FileEntry[] = state.drives.length > 0
+        ? state.drives.map((d) => ({
+            name: d.name,
+            path: d.path,
+            isDir: true,
+            size: 0,
+            modified: 0,
+            gitStatus: null,
+            lastCommit: null,
+          }))
+        : [];
+      // "此电脑" 子节点缓存
+      treeChildren.set("", allDriveEntries);
+      // 加载磁盘根目录内容并自动展开
+      if (driveMatch) {
+        const driveRoot = driveMatch[1] + "\\";
+        expandedPaths.add(driveRoot);
+        try {
+          const driveChildren = await ipc.workspaceTreeExpand(driveRoot);
+          treeChildren.set(driveRoot, driveChildren);
+        } catch {}
+      }
+      // 沿路径链加载每一级
+      for (let i = 1; i < pathChain.length; i++) {
+        const parent = pathChain[i - 1];
+        const current = pathChain[i];
+        expandedPaths.add(current);
+        // 加载 parent 的子目录（如果还没加载）
+        if (!treeChildren.has(parent)) {
+          try {
+            const children = await ipc.workspaceTreeExpand(parent);
+            treeChildren.set(parent, children);
+          } catch {}
+        }
+      }
+      // 工作区根目录内容也加载到 treeChildren
+      treeChildren.set(rootPath, entries);
+
       set({
         entries,
-        treeEntries: entries,  // 左侧树顶层节点 = 根目录内容（不随导航变化）
+        treeEntries: allDriveEntries,
         loading: false,
         historyStack: ["", rootPath],
         historyIndex: 1,
         canGoBack: true,
         canGoUp: true,
+        expandedPaths,
+        treeChildren,
       });
     } catch (e) {
       console.error("openWorkspace failed:", e);
@@ -157,15 +220,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         newIndex = newStack.length - 1;
       }
       // 统一计算 canGoBack 和 canGoUp
-      // canGoUp: 当前不在 home 且（有根目录且路径长于根目录，或无根目录限制）
       const rootPath = state.rootPath;
       const canBack = newIndex > 0;
-      // canGoUp: 当前路径比根目录深，或者历史栈底部有 home（可以从根目录回到磁盘列表）
+      // canGoUp: 当前路径比根目录深，或者当前就是根目录且有 home 可以回去
+      // 额外: 驱动器根目录 (E:\) 也可以向上回到此电脑
       const hasHome = newStack[0] === "";
+      const isDriveRoot = /^[A-Za-z]:[\\/]$/.test(dirPath);
       const canUp = dirPath !== "" && (
-        rootPath !== null && dirPath !== rootPath && dirPath.length > rootPath.length
+        (rootPath !== null && dirPath !== rootPath && dirPath.length > rootPath.length)
           ? true
-          : rootPath !== null && dirPath === rootPath && hasHome
+          : (rootPath !== null && dirPath === rootPath && hasHome)
+            ? true
+            : isDriveRoot && hasHome
       );
       set({
         entries: result.entries,
@@ -200,7 +266,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   goUp: async () => {
     const state = get();
     if (!state.currentDir) return;
-    // 如果当前就在根目录，向上回到 home（磁盘列表）
+    // 如果当前就在根目录，向上回到 home（磁盘列表 / 此电脑）
     if (state.rootPath && state.currentDir === state.rootPath) {
       get().goHome();
       return;
@@ -209,14 +275,42 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // 计算上级目录
     const current = state.currentDir;
     const sep = current.includes("\\") ? "\\" : "/";
-    const parts = current.split(sep).filter(Boolean);
-    if (parts.length <= 1) return;
-    parts.pop();
-    const parent = current.startsWith("\\\\") || current.startsWith("//")
-      ? sep + sep + parts.join(sep)
-      : (current.match(/^[A-Z]:/)?.[0] || "") + sep + parts.join(sep);
+    // 处理 UNC 路径 \\server\share\...
+    if (current.startsWith("\\\\") || current.startsWith("//")) {
+      const parts = current.split(sep).filter(Boolean);
+      if (parts.length <= 2) return; // UNC 根 server\share，不再向上
+      parts.pop();
+      const parent = sep + sep + parts.join(sep);
+      if (parent === state.currentDir) return;
+      await state.navigateTo(parent);
+      return;
+    }
+    // 普通路径如 E:\face\sub
+    // 当前已经是驱动器根目录 E:\ — 向上回到此电脑
+    if (/^[A-Za-z]:[\\/]+$/.test(current)) {
+      get().goHome();
+      return;
+    }
+    // 用 PathBuf 式逻辑：取 parent
+    const trimmed = current.replace(/[\\/]+$/, ""); // 去掉末尾分隔符
+    const lastSep = Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"));
+    if (lastSep <= 0) return;
+    // 驱动器根目录: E:\ — 再向上回到此电脑
+    if (lastSep === 2 && /^[A-Za-z]:[\/]/.test(trimmed)) {
+      // 当前是 E:\face，上级是 E:\
+      const parent = trimmed.substring(0, 3); // E:\
+      if (parent === state.currentDir) return;
+      await state.navigateTo(parent);
+      return;
+    }
+    // 当前已经是 E:\ （驱动器根），向上回到此电脑
+    if (/^[A-Za-z]:[\\/]$/.test(trimmed)) {
+      get().goHome();
+      return;
+    }
+    // 普通子目录: E:\face\sub -> E:\face
+    const parent = trimmed.substring(0, lastSep);
     if (parent === state.currentDir) return;
-    // 统一走 navigateTo，作为正常导航压栈
     await state.navigateTo(parent);
   },
 
@@ -239,6 +333,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       expanded.delete(dirPath);
       set({ expandedPaths: expanded });
     } else {
+      // 特殊处理："" = "此电脑"节点，子节点是磁盘列表
+      if (dirPath === "") {
+        if (!state.treeChildren.has("")) {
+          const driveEntries: FileEntry[] = state.drives.map((d) => ({
+            name: d.name,
+            path: d.path,
+            isDir: true,
+            size: 0,
+            modified: 0,
+            gitStatus: null,
+            lastCommit: null,
+          }));
+          const treeChildren = new Map(state.treeChildren);
+          treeChildren.set("", driveEntries);
+          expanded.add("");
+          set({ expandedPaths: expanded, treeChildren });
+        } else {
+          expanded.add("");
+          set({ expandedPaths: expanded });
+        }
+        return;
+      }
       // 懒加载子目录
       if (!state.treeChildren.has(dirPath)) {
         try {
@@ -378,4 +494,15 @@ export const useScanStore = create<ScanState>((set) => ({
   scanCancelled: false,
   setScanning: (v, root) => set({ scanning: v, scanRoot: root ?? null, scanCancelled: false }),
   setScanCancelled: (v) => set({ scanCancelled: v }),
+}));
+
+// ============ 配置 store ============
+interface ConfigState {
+  autoScanGit: boolean;
+  setAutoScanGit: (v: boolean) => void;
+}
+
+export const useConfigStore = create<ConfigState>((set) => ({
+  autoScanGit: false,
+  setAutoScanGit: (v) => set({ autoScanGit: v }),
 }));

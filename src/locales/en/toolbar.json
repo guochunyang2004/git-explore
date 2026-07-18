@@ -13,5 +13,7 @@
   "scanGit": "Scan Git",
   "scanCancel": "Stop Scan",
   "scanning": "Scanning",
-  "clone": "Clone"
+  "clone": "Clone",
+  "pullAll": "Pull All",
+  "pullAllTitle": "Pull latest from all Git repos in current directory"
 }

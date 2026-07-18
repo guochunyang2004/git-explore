@@ -6,5 +6,6 @@
   "selectAll": "Select All",
   "clearAll": "Clear Selection",
   "drives": "Drives",
-  "recent": "Recent"
+  "recent": "Recent",
+  "thisPC": "This PC"
 }

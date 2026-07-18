@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon, ArrowUpIcon, CloneIcon,
 } from "@/components/icons";
 import { useWorkspaceStore, useBatchSelectionStore, useScanStore, useGitReposStore } from "@/stores";
-import { scanGitRepos, scanCancel, gitPull, gitPush, onEvent } from "@/ipc";
+import { scanGitRepos, scanCancel, gitPull, gitPush, batchRun, onEvent } from "@/ipc";
 import { BranchSwitchDialog } from "@/components/BranchSwitchDialog";
 import { CloneDialog } from "@/components/CloneDialog";
 import { CommitDialog } from "@/components/CommitDialog";
@@ -96,6 +96,24 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
     if (!targetPath) return;
     setRepos([]);
     await scanGitRepos(targetPath);
+  };
+
+  const handlePullAll = async () => {
+    const targetPath = currentDir || rootPath;
+    if (!targetPath) return;
+    // 确保已扫描最新仓库列表
+    if (repos.length === 0) {
+      setRepos([]);
+      await scanGitRepos(targetPath);
+    }
+    // 使用当前已扫描到的仓库（包含子目录）
+    const repoPaths = repos.map((r) => r.path);
+    if (repoPaths.length === 0) return;
+    try {
+      await batchRun("pull", repoPaths);
+    } catch (e: any) {
+      setGitOpError(e?.message || t("gitops:pullFailed"));
+    }
   };
 
   const handleScanCancel = async () => {
@@ -208,6 +226,16 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
         disabled={!selectedRepoPath}
       >
         <PullIcon size={15} /> {t("toolbar:pull")}
+      </button>
+      {/* 批量拉取 */}
+      <button
+        className="tb-btn"
+        style={repos.length > 0 ? { ...btnStyle(), border: "1px solid var(--git-orange)", color: "var(--git-orange)" } : disabledBtnStyle}
+        title={t("toolbar:pullAllTitle")}
+        onClick={handlePullAll}
+        disabled={repos.length === 0}
+      >
+        <PullIcon size={15} /> {t("toolbar:pullAll")}
       </button>
       {/* 提交 */}
       <button

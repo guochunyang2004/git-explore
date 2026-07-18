@@ -6,7 +6,7 @@ import {
   FolderIcon, GitBranchIcon, FileIcon, ChevronRightIcon,
   CheckIcon, RefreshIcon, DriveIcon,
 } from "@/components/icons";
-import { useWorkspaceStore, useGitReposStore, useBatchSelectionStore, useScanStore } from "@/stores";
+import { useWorkspaceStore, useGitReposStore, useBatchSelectionStore, useScanStore, useConfigStore } from "@/stores";
 import type { GitRepoInfo, FileEntry, FileStatus } from "@/types";
 import { scanGitRepos } from "@/ipc";
 
@@ -99,14 +99,15 @@ function TreeNode({ entry, depth, reposMap, currentPath }: {
   const handleClick = useCallback(() => {
     setSelected(entry.path);
     if (entry.isDir) {
+      // 单击：仅展开/折叠，不导航右侧列表（参考资源管理器）
       toggleExpand(entry.path);
-      navigateTo(entry.path);
-      // 扫描该目录及其子目录的 Git 仓库（增量合并）
-      if (!scanning) {
+      // 根据设置决定是否自动扫描该目录的 Git 仓库
+      const autoScan = useConfigStore.getState().autoScanGit;
+      if (autoScan && !scanning) {
         scanGitRepos(entry.path);
       }
     }
-  }, [entry, setSelected, toggleExpand, navigateTo, scanning]);
+  }, [entry, setSelected, toggleExpand, scanning]);
 
   return (
     <>
@@ -115,7 +116,10 @@ function TreeNode({ entry, depth, reposMap, currentPath }: {
         style={{ paddingLeft: `${4 + depth * 14}px` }}
         onClick={handleClick}
         onDoubleClick={() => {
-          if (entry.isDir) navigateTo(entry.path);
+          if (entry.isDir) {
+            setSelected(entry.path);
+            navigateTo(entry.path);
+          }
         }}
       >
         {/* 批量复选框（非 Git 仓库节点占位以保持对齐） */}
@@ -220,6 +224,10 @@ export function FileTree() {
   const selectedRepos = useBatchSelectionStore((s) => s.selectedRepos);
   const selectAll = useBatchSelectionStore((s) => s.selectAll);
   const clearAll = useBatchSelectionStore((s) => s.clearAll);
+  const setSelected = useWorkspaceStore((s) => s.setSelected);
+  const goHome = useWorkspaceStore((s) => s.goHome);
+  const toggleExpand = useWorkspaceStore((s) => s.toggleExpand);
+  const thisPCExpanded = useWorkspaceStore((s) => s.expandedPaths.has(""));
 
   // 仓库路径 → GitRepoInfo 映射
   const reposMap = useMemo(() => {
@@ -248,17 +256,29 @@ export function FileTree() {
       {/* 树节点列表 */}
       <div className="side-list">
         {rootPath === null ? (
-          // 未打开工作区时：展示磁盘列表
+          // 未打开工作区时：展示“此电脑” + 磁盘列表 + 最近打开
           drives.length > 0 ? (
             <>
-              <div style={{ padding: "6px 8px", fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>
+              <div
+                className={`tree-node${selectedEntry === "" ? " active" : ""}`}
+                style={{ paddingLeft: "8px", fontWeight: 600 }}
+                onClick={() => {
+                  setSelected("");
+                  goHome();
+                }}
+              >
+                <span style={{ width: 10, height: 10 }} />
+                <DriveIcon size={16} style={{ color: "var(--text-primary)", flexShrink: 0 }} />
+                <span className="tree-label">{t("filetree:thisPC")}</span>
+              </div>
+              <div style={{ padding: "4px 8px 2px 22px", fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>
                 {t("filetree:drives")}
               </div>
               {drives.map((drive) => (
                 <div
                   key={drive.path}
                   className="tree-node"
-                  style={{ paddingLeft: "8px" }}
+                  style={{ paddingLeft: "22px" }}
                   onClick={() => openWorkspace(drive.path)}
                   title={drive.path}
                 >
@@ -270,14 +290,14 @@ export function FileTree() {
               {/* 最近打开 */}
               {recentRoots.length > 0 && (
                 <>
-                  <div style={{ padding: "6px 8px", marginTop: 4, fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>
+                  <div style={{ padding: "6px 8px 2px 22px", marginTop: 4, fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600 }}>
                     {t("filetree:recent")}
                   </div>
                   {recentRoots.map((rp) => (
                     <div
                       key={rp}
                       className="tree-node"
-                      style={{ paddingLeft: "8px" }}
+                      style={{ paddingLeft: "22px" }}
                       onClick={() => openWorkspace(rp)}
                       title={rp}
                     >
@@ -299,15 +319,42 @@ export function FileTree() {
             {t("common:empty")}
           </div>
         ) : (
-          treeEntries.map((entry) => (
-            <TreeNode
-              key={entry.path}
-              entry={entry}
-              depth={0}
-              reposMap={reposMap}
-              currentPath={selectedEntry}
-            />
-          ))
+          <>
+            {/* "此电脑"虚拟根节点 — 可展开/折叠 */}
+            <div
+              className={`tree-node${selectedEntry === "" ? " active" : ""}`}
+              style={{ paddingLeft: "8px", fontWeight: 600 }}
+              onClick={() => {
+                setSelected("");
+                toggleExpand("");
+              }}
+            >
+              <span style={{ width: 10, height: 10 }} />
+              <span
+                className={`tree-chevron${thisPCExpanded ? " open" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand("");
+                }}
+              >
+                <ChevronRightIcon />
+              </span>
+              <DriveIcon size={16} style={{ color: "var(--text-primary)", flexShrink: 0 }} />
+              <span className="tree-label">{t("filetree:thisPC")}</span>
+            </div>
+            {/* "此电脑"展开后：显示磁盘列表（treeEntries），每个磁盘用 TreeNode 渲染 */}
+            {thisPCExpanded &&
+              treeEntries.map((entry) => (
+                <TreeNode
+                  key={entry.path}
+                  entry={entry}
+                  depth={1}
+                  reposMap={reposMap}
+                  currentPath={selectedEntry}
+                />
+              ))
+            }
+          </>
         )}
       </div>
 

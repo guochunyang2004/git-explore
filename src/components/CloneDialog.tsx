@@ -25,13 +25,15 @@ export function CloneDialog({ open, onClose }: CloneDialogProps) {
 
   const openWorkspace = useWorkspaceStore((s) => s.openWorkspace);
   const rootPath = useWorkspaceStore((s) => s.rootPath);
+  const currentDir = useWorkspaceStore((s) => s.currentDir);
+  const selectedEntry = useWorkspaceStore((s) => s.selectedEntry);
 
-  // 默认目标目录 = 当前工作区根目录
+  // 每次打开弹窗时，默认目标目录 = 当前选中目录 > 当前导航目录 > 工作区根目录
   useEffect(() => {
-    if (open && !destDir) {
-      setDestDir(rootPath || "");
+    if (open) {
+      setDestDir(selectedEntry || currentDir || rootPath || "");
     }
-  }, [open, rootPath, destDir]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 监听克隆进度
   useEffect(() => {

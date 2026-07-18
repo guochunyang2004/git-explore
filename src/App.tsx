@@ -10,7 +10,7 @@ import { FileList } from "@/components/FileList";
 import { BatchProgressPanel } from "@/components/BatchProgressPanel";
 import { StatusBar } from "@/components/StatusBar";
 import { SettingsDialog, applyRepoColor } from "@/components/SettingsDialog";
-import { useBatchSelectionStore, useBatchProgressStore, useWorkspaceStore } from "@/stores";
+import { useBatchSelectionStore, useBatchProgressStore, useWorkspaceStore, useConfigStore } from "@/stores";
 import { useAppInit } from "@/hooks/useAppInit";
 import { configGet } from "@/ipc";
 
@@ -31,9 +31,10 @@ export function App() {
     initialized.current = true;
     loadRecents();
     loadDrives();
-    // 启动时从配置加载仓库颜色
+    // 启动时从配置加载仓库颜色 + 自动扫描设置
     configGet().then((cfg) => {
       if (cfg.repoColor) applyRepoColor(cfg.repoColor);
+      useConfigStore.getState().setAutoScanGit(cfg.autoScanGit);
     }).catch(() => {});
   }, []);
 

@@ -41,6 +41,7 @@ impl WorkspaceManager {
 
         // 路径规范化
         let canonical = path.canonicalize().unwrap_or(path);
+        let canonical = strip_verbatim_prefix(&canonical);
         *self.root.write().unwrap() = Some(canonical.clone());
 
         tracing::info!("打开工作区: {}", canonical.display());
@@ -143,6 +144,20 @@ impl WorkspaceManager {
 impl Default for WorkspaceManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// 去除 Windows extended-length path 前缀 `\\?\`
+/// canonicalize() 在 Windows 上会返回 `\\?\D:\...` 格式，
+/// 需要去除前缀以正常显示
+fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        // 去掉 `\\?\` 前缀
+        let stripped = &s[4..];
+        PathBuf::from(stripped)
+    } else {
+        path.to_path_buf()
     }
 }
 

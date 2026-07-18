@@ -15,6 +15,7 @@ pub struct SettingsDto {
     pub batch_concurrency: u32,
     pub restore_last_root: bool,
     pub repo_color: String,
+    pub auto_scan_git: bool,
 }
 
 /// 获取当前配置（用于设置页面初始化）
@@ -27,6 +28,7 @@ pub fn config_get(state: State<'_, AppState>) -> SettingsDto {
         batch_concurrency: cfg.preferences.batch_concurrency,
         restore_last_root: cfg.preferences.restore_last_root,
         repo_color: cfg.preferences.repo_color,
+        auto_scan_git: cfg.preferences.auto_scan_git,
     }
 }
 
@@ -34,13 +36,13 @@ pub fn config_get(state: State<'_, AppState>) -> SettingsDto {
 #[tauri::command]
 pub fn config_save(settings: SettingsDto, state: State<'_, AppState>) -> AppResult<()> {
     state.config.set_language(settings.language);
-    // 直接更新锁内的 preferences
     {
         let mut cfg = state.config.inner_lock();
         cfg.preferences.scan_depth = settings.scan_depth;
         cfg.preferences.batch_concurrency = settings.batch_concurrency;
         cfg.preferences.restore_last_root = settings.restore_last_root;
         cfg.preferences.repo_color = settings.repo_color;
+        cfg.preferences.auto_scan_git = settings.auto_scan_git;
     }
     state.config.save()
 }

@@ -70,6 +70,7 @@ impl GitDetector {
     pub fn context_of(&self, path: &Path) -> Option<GitRepoInfo> {
         let repos = self.repos.read().unwrap();
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let canonical = strip_verbatim_prefix(&canonical);
         let mut best: Option<GitRepoInfo> = None;
         let mut best_len = 0;
         for (repo_path, info) in repos.iter() {
@@ -156,5 +157,16 @@ fn count_dirty(repo: &git2::Repository) -> u32 {
                 && !st.is_ignored()
         }).count() as u32,
         Err(_) => 0,
+    }
+}
+
+/// 去除 Windows extended-length path 前缀 `\\?\`
+fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        let stripped = &s[4..];
+        PathBuf::from(stripped)
+    } else {
+        path.to_path_buf()
     }
 }

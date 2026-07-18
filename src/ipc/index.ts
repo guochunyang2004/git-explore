@@ -104,6 +104,7 @@ export interface SettingsDto {
   batchConcurrency: number;
   restoreLastRoot: boolean;
   repoColor: string;
+  autoScanGit: boolean;
 }
 
 export const configGet = (): Promise<SettingsDto> =>
