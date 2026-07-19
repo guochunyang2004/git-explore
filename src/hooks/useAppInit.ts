@@ -2,7 +2,7 @@
 // 在 App 挂载时执行一次，连接后端事件 → 前端 stores
 import { useEffect } from "react";
 import { onEvent } from "@/ipc";
-import { useGitReposStore, useBatchProgressStore, useScanStore } from "@/stores";
+import { useGitReposStore, useBatchProgressStore, useScanStore, useSizeScanStore } from "@/stores";
 import type { GitRepoInfo, BatchTask } from "@/types";
 
 // 事件载荷类型（与 Rust events.rs 对齐）
@@ -44,6 +44,13 @@ export function useAppInit() {
   const reset = useBatchProgressStore((s) => s.reset);
   const setScanning = useScanStore((s) => s.setScanning);
   const setScanCancelled = useScanStore((s) => s.setScanCancelled);
+  const setScanProgress = useScanStore((s) => s.setScanProgress);
+  const upsertRepo = useGitReposStore((s) => s.upsertRepo);
+  // 大小扫描
+  const setSizeScanning = useSizeScanStore((s) => s.setSizeScanning);
+  const setSizeScanCancelled = useSizeScanStore((s) => s.setSizeScanCancelled);
+  const setSizeScanProgress = useSizeScanStore((s) => s.setSizeScanProgress);
+  const setDirSize = useSizeScanStore((s) => s.setDirSize);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
@@ -63,6 +70,38 @@ export function useAppInit() {
     onEvent<{ rootPath: string; found: number }>("git:scan-cancelled", () => {
       setScanning(false);
       setScanCancelled(true);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // 1d. Git 扫描进度（实时）
+    onEvent<{ rootPath: string; scannedDirs: number; foundRepos: number; currentDir: string }>("git:scan-progress", (payload) => {
+      setScanProgress(payload.scannedDirs, payload.foundRepos, payload.currentDir);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // 1e. 单个 Git 仓库被发现（实时）
+    onEvent<{ repo: GitRepoInfo }>("git:repo-found", (payload) => {
+      upsertRepo(payload.repo);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // === 大小扫描事件 ===
+    // 2a. 大小扫描开始
+    onEvent<{ rootPath: string }>("size:scan-started", (payload) => {
+      setSizeScanning(true, payload.rootPath);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // 2b. 大小扫描进度
+    onEvent<{ rootPath: string; scannedDirs: number; scannedFiles: number; currentDir: string }>("size:scan-progress", (payload) => {
+      setSizeScanProgress(payload.scannedDirs, payload.scannedFiles, payload.currentDir);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // 2c. 单个目录大小已算出
+    onEvent<{ path: string; size: number; fileCount: number; dirCount: number }>("size:entry-updated", (payload) => {
+      setDirSize(payload.path, payload.size, payload.fileCount, payload.dirCount);
+    }).then((unlisten) => unlisteners.push(unlisten));
+
+    // 2d. 大小扫描取消/完成
+    onEvent<{ rootPath: string; scanned: number }>("size:scan-cancelled", () => {
+      setSizeScanning(false);
+      setSizeScanCancelled(true);
     }).then((unlisten) => unlisteners.push(unlisten));
 
     // 2. 批量操作启动 — 初始化空任务列表（任务通过 batch:repo-progress 逐个接收）
@@ -98,5 +137,5 @@ export function useAppInit() {
     return () => {
       unlisteners.forEach((fn) => fn());
     };
-  }, [setRepos, mergeRepos, setBatch, updateTask, reset, setScanning, setScanCancelled]);
+  }, [setRepos, mergeRepos, upsertRepo, setBatch, updateTask, reset, setScanning, setScanCancelled, setScanProgress, setSizeScanning, setSizeScanCancelled, setSizeScanProgress, setDirSize]);
 }

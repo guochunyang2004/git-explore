@@ -472,8 +472,11 @@ button { font-family: inherit; }
   height: 100%;
   white-space: nowrap;
 }
-.list-col:hover { color: var(--text-primary); }
-.list-col .sort-arr { color: var(--accent); }
+.list-col:hover { color: var(--text-primary); background: rgba(0,0,0,0.02); }
+.list-col.sorted { color: var(--text-primary); }
+.list-col .sort-arr { font-size: 9px; margin-left: 2px; }
+.list-col .sort-arr.inactive { color: var(--text-tertiary); opacity: 0.4; }
+.list-col .sort-arr.active { color: var(--accent); }
 .list-col.name { flex: 1.6; }
 .list-col.status { width: 80px; }
 .list-col.branch { width: 120px; }
@@ -585,6 +588,19 @@ button { font-family: inherit; }
 .sb-link { color: var(--text-secondary); }
 .sb-link:hover { color: var(--accent); cursor: pointer; }
 .sb-divider { width: 1px; height: 14px; background: var(--divider); }
+
+/* 扫描进度 spinner */
+.sb-scan { gap: 6px; }
+.sb-scan-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--git-orange);
+  border-radius: 50%;
+  animation: sb-spin 0.8s linear infinite;
+}
+@keyframes sb-spin { to { transform: rotate(360deg); } }
 
 /* ============ 语言切换器 ============ */
 .lang-select {

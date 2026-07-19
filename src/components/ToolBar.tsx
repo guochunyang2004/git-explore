@@ -6,10 +6,10 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   FolderOpenIcon, PullIcon, CommitIcon, PushIcon, GitBranchIcon,
   HistoryIcon, RefreshIcon, SearchIcon, GridIcon, SettingsIcon,
-  ArrowLeftIcon, ArrowUpIcon, CloneIcon,
+  ArrowLeftIcon, ArrowUpIcon, CloneIcon, SizeIcon,
 } from "@/components/icons";
-import { useWorkspaceStore, useBatchSelectionStore, useScanStore, useGitReposStore } from "@/stores";
-import { scanGitRepos, scanCancel, gitPull, gitPush, batchRun, onEvent } from "@/ipc";
+import { useWorkspaceStore, useBatchSelectionStore, useScanStore, useGitReposStore, useSizeScanStore } from "@/stores";
+import { scanGitRepos, scanCancel, gitPull, gitPush, batchRun, gitRefreshRepo, scanDirSizes, scanSizeCancel, onEvent } from "@/ipc";
 import { BranchSwitchDialog } from "@/components/BranchSwitchDialog";
 import { CloneDialog } from "@/components/CloneDialog";
 import { CommitDialog } from "@/components/CommitDialog";
@@ -28,8 +28,10 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
   const toggleBatchMode = useBatchSelectionStore((s) => s.toggleBatchMode);
   const batchMode = useBatchSelectionStore((s) => s.batchMode);
   const scanning = useScanStore((s) => s.scanning);
+  const sizeScanning = useSizeScanStore((s) => s.sizeScanning);
   const setRepos = useGitReposStore((s) => s.setRepos);
   const repos = useGitReposStore((s) => s.repos);
+  const upsertRepo = useGitReposStore((s) => s.upsertRepo);
   const selectedEntry = useWorkspaceStore((s) => s.selectedEntry);
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
@@ -120,6 +122,15 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
     await scanCancel();
   };
 
+  const handleSizeScan = async () => {
+    // 始终扫描工作区根目录及其所有子目录，确保切换页面后数据仍在
+    if (rootPath) await scanDirSizes(rootPath);
+  };
+
+  const handleSizeScanCancel = async () => {
+    await scanSizeCancel();
+  };
+
   const handleRefresh = () => {
     if (rootPath) navigateTo(rootPath);
   };
@@ -207,6 +218,28 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
         </button>
       )}
       {divider}
+      {/* 扫描大小按钮 */}
+      {sizeScanning ? (
+        <button
+          className="tb-btn"
+          style={{ ...btnStyle(true), background: "#e74c3c", borderColor: "#e74c3c" }}
+          title={t("toolbar:scanSizeCancel")}
+          onClick={handleSizeScanCancel}
+        >
+          <SizeIcon size={15} /> {t("toolbar:scanningSize")}…
+        </button>
+      ) : (
+        <button
+          className="tb-btn"
+          style={{ ...btnStyle(), border: "1px solid var(--accent)", color: "var(--accent)" }}
+          title={t("toolbar:scanSize")}
+          onClick={handleSizeScan}
+          disabled={!rootPath}
+        >
+          <SizeIcon size={15} /> {t("toolbar:scanSize")}
+        </button>
+      )}
+      {divider}
       {/* 克隆仓库 */}
       <button
         className="tb-btn"
@@ -288,9 +321,15 @@ export function ToolBar({ onSettings }: { onSettings: () => void }) {
         open={branchDialogOpen}
         repoPath={selectedRepoPath || ""}
         onClose={() => setBranchDialogOpen(false)}
-        onSwitched={() => {
-          const targetPath = currentDir || rootPath;
-          if (targetPath) scanGitRepos(targetPath);
+        onSwitched={async () => {
+          if (selectedRepoPath) {
+            try {
+              const info = await gitRefreshRepo(selectedRepoPath);
+              upsertRepo(info);
+            } catch (e) {
+              console.error("refresh repo failed", e);
+            }
+          }
         }}
       />
       {/* 克隆仓库弹窗 */}

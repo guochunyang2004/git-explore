@@ -110,6 +110,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   /** 打开根目录：调用 workspace_open IPC，历史栈以 home 为起点 */
   openWorkspace: async (rootPath: string) => {
+    // 切换工作区时清空之前的大小扫描数据
+    useSizeScanStore.getState().resetDirSizes();
     set({ loading: true, rootPath, currentDir: rootPath, selectedEntry: rootPath });
     try {
       const ipc = await loadIpc();
@@ -484,16 +486,74 @@ interface ScanState {
   scanning: boolean;
   scanRoot: string | null;
   scanCancelled: boolean;
+  // 扫描进度
+  scannedDirs: number;       // 已扫描目录数
+  foundRepos: number;        // 已发现仓库数
+  currentScanDir: string;    // 当前正在扫描的目录
   setScanning: (v: boolean, root?: string | null) => void;
   setScanCancelled: (v: boolean) => void;
+  setScanProgress: (scannedDirs: number, foundRepos: number, currentDir: string) => void;
+  resetScanProgress: () => void;
 }
 
 export const useScanStore = create<ScanState>((set) => ({
   scanning: false,
   scanRoot: null,
   scanCancelled: false,
-  setScanning: (v, root) => set({ scanning: v, scanRoot: root ?? null, scanCancelled: false }),
+  scannedDirs: 0,
+  foundRepos: 0,
+  currentScanDir: "",
+  setScanning: (v, root) => set({ scanning: v, scanRoot: root ?? null, scanCancelled: false, scannedDirs: 0, foundRepos: 0, currentScanDir: "" }),
   setScanCancelled: (v) => set({ scanCancelled: v }),
+  setScanProgress: (scannedDirs, foundRepos, currentScanDir) => set({ scannedDirs, foundRepos, currentScanDir }),
+  resetScanProgress: () => set({ scannedDirs: 0, foundRepos: 0, currentScanDir: "" }),
+}));
+
+// ============ 大小扫描 store ============
+interface SizeScanState {
+  sizeScanning: boolean;
+  sizeScanRoot: string | null;
+  sizeScanCancelled: boolean;
+  scannedDirs: number;
+  scannedFiles: number;
+  currentSizeDir: string;
+  /// 目录路径 → 大小信息
+  dirSizes: Map<string, { size: number; fileCount: number; dirCount: number }>;
+  setSizeScanning: (v: boolean, root?: string | null) => void;
+  setSizeScanCancelled: (v: boolean) => void;
+  setSizeScanProgress: (scannedDirs: number, scannedFiles: number, currentDir: string) => void;
+  setDirSize: (path: string, size: number, fileCount: number, dirCount: number) => void;
+  resetDirSizes: () => void;
+}
+
+export const useSizeScanStore = create<SizeScanState>((set) => ({
+  sizeScanning: false,
+  sizeScanRoot: null,
+  sizeScanCancelled: false,
+  scannedDirs: 0,
+  scannedFiles: 0,
+  currentSizeDir: "",
+  dirSizes: new Map(),
+  setSizeScanning: (v, root) => set((s) => ({
+    sizeScanning: v,
+    sizeScanRoot: root ?? s.sizeScanRoot,
+    sizeScanCancelled: false,
+    scannedDirs: 0,
+    scannedFiles: 0,
+    currentSizeDir: "",
+    // 仅在扫描开始时不清空 dirSizes，保留之前的扫描结果
+    // 新扫描的数据会覆盖旧路径的条目
+  })),
+  setSizeScanCancelled: (v) => set({ sizeScanCancelled: v }),
+  setSizeScanProgress: (scannedDirs, scannedFiles, currentSizeDir) => set({ scannedDirs, scannedFiles, currentSizeDir }),
+  setDirSize: (path, size, fileCount, dirCount) =>
+    set((s) => {
+      const normPath = path.replace(/^\\\\\?\\/, '').replace(/\//g, '\\');
+      const newMap = new Map(s.dirSizes);
+      newMap.set(normPath, { size, fileCount, dirCount });
+      return { dirSizes: newMap };
+    }),
+  resetDirSizes: () => set({ dirSizes: new Map() }),
 }));
 
 // ============ 配置 store ============

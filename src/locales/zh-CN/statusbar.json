@@ -9,5 +9,10 @@
   "ready": "就绪",
   "batchProgress": "批量{{op}}",
   "language": "语言",
-  "followSystem": "跟随系统"
+  "followSystem": "跟随系统",
+  "scanning": "扫描中",
+  "scanningSize": "扫描大小中",
+  "repos": "仓库",
+  "dirs": "目录",
+  "files": "文件"
 }

@@ -130,7 +130,15 @@ pub fn workspace_open(
     let depth = cfg_snapshot.preferences.scan_depth as usize;
     let root = std::path::PathBuf::from(root_path);
     tauri::async_runtime::spawn(async move {
-        match detector.scan(&root, depth) {
+        // 发射扫描开始事件
+        let _ = app.emit(
+            crate::events::event_name::GIT_SCAN_STARTED,
+            crate::events::GitScanStartedPayload {
+                root_path: root.to_string_lossy().to_string(),
+            },
+        );
+        let cancel_flag = std::sync::atomic::AtomicBool::new(false);
+        match detector.scan_with_cancel(&root, depth, &cancel_flag, Some(app.clone())) {
             Ok(repos) => {
                 let _ = app.emit(
                     crate::events::event_name::GIT_REPOS_DETECTED,
@@ -216,7 +224,7 @@ pub fn scan_git_repos(
             },
         );
 
-        match detector.scan_with_cancel(&root, scan_depth, &cancel_flag) {
+        match detector.scan_with_cancel(&root, scan_depth, &cancel_flag, Some(app.clone())) {
             Ok(repos) => {
                 if cancel_flag.load(Ordering::SeqCst) {
                     let _ = app.emit(

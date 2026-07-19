@@ -4,4 +4,5 @@ pub mod batch;
 pub mod config;
 pub mod fs;
 pub mod git;
+pub mod size_scan;
 pub mod workspace;

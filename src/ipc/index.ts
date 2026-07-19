@@ -11,6 +11,7 @@ import type {
   DiffContent,
   FileEntry,
   FileStatus,
+  GitRepoInfo,
   ListResult,
 } from "@/types";
 
@@ -83,6 +84,16 @@ export const gitCommit = (
 
 export const gitDiff = (repoPath: string, filePath: string): Promise<DiffContent> =>
   invoke("git_diff", { repoPath, filePath });
+
+export const gitRefreshRepo = (repoPath: string): Promise<GitRepoInfo> =>
+  invoke("git_refresh_repo", { repoPath });
+
+// ============ 大小扫描 ============
+export const scanDirSizes = (rootPath: string, depth?: number): Promise<void> =>
+  invoke("scan_dir_sizes", { rootPath, depth });
+
+export const scanSizeCancel = (): Promise<void> =>
+  invoke("scan_size_cancel");
 
 // ============ 批量命令 ============
 export const batchRun = (op: BatchOp, repoPaths: string[]): Promise<string> =>

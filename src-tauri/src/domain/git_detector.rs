@@ -6,7 +6,9 @@ use crate::infra::error::AppResult;
 use crate::types::GitRepoInfo;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::RwLock;
+use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
 
 pub struct GitDetector {
@@ -20,18 +22,20 @@ impl GitDetector {
 
     /// 扫描根目录下指定深度，识别所有 git 仓库
     pub fn scan(&self, root: &Path, depth: usize) -> AppResult<Vec<GitRepoInfo>> {
-        self.scan_with_cancel(root, depth, &std::sync::atomic::AtomicBool::new(false))
+        self.scan_with_cancel(root, depth, &AtomicBool::new(false), None)
     }
 
-    /// 扫描根目录下指定深度，支持取消令牌
+    /// 扫描根目录下指定深度，支持取消令牌 + 进度上报
     pub fn scan_with_cancel(
         &self,
         root: &Path,
         depth: usize,
-        cancel_flag: &std::sync::atomic::AtomicBool,
+        cancel_flag: &AtomicBool,
+        app: Option<AppHandle>,
     ) -> AppResult<Vec<GitRepoInfo>> {
-        use std::sync::atomic::Ordering;
         let mut found = Vec::new();
+        let mut scanned_dirs: u32 = 0;
+
         for entry in WalkDir::new(root)
             .max_depth(depth)
             .into_iter()
@@ -50,8 +54,30 @@ impl GitDetector {
             if name == "node_modules" || name == ".git" || name == "target" || name == "__pycache__" {
                 continue;
             }
+            scanned_dirs += 1;
+
+            // 上报进度
+            if let Some(ref app) = app {
+                let _ = app.emit(
+                    crate::events::event_name::GIT_SCAN_PROGRESS,
+                    crate::events::GitScanProgressPayload {
+                        root_path: root.to_string_lossy().to_string(),
+                        scanned_dirs,
+                        found_repos: found.len() as u32,
+                        current_dir: path.to_string_lossy().to_string(),
+                    },
+                );
+            }
+
             if path.join(".git").exists() {
                 if let Ok(info) = Self::read_repo_info(path) {
+                    // 实时上报发现的仓库
+                    if let Some(ref app) = app {
+                        let _ = app.emit(
+                            crate::events::event_name::GIT_REPO_FOUND,
+                            crate::events::GitRepoFoundPayload { repo: info.clone() },
+                        );
+                    }
                     found.push(info);
                 }
             }
@@ -64,6 +90,14 @@ impl GitDetector {
         }
         tracing::info!("扫描完成，识别到 {} 个 git 仓库", found.len());
         Ok(found)
+    }
+
+    /// 刷新单个仓库信息（不扫描子目录，只重新读取该路径的 git 状态）
+    pub fn scan_one(&self, path: &Path) -> AppResult<GitRepoInfo> {
+        let info = Self::read_repo_info(path)?;
+        let mut repos = self.repos.write().unwrap();
+        repos.insert(info.path.clone(), info.clone());
+        Ok(info)
     }
 
     /// 推导指定路径所属的 git 仓库（向上查找最近的）

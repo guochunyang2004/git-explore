@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { GitBranchIcon, FileIcon, CommitIcon, PullIcon } from "@/components/icons";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { useWorkspaceStore, useGitReposStore, useBatchProgressStore } from "@/stores";
+import { useWorkspaceStore, useGitReposStore, useBatchProgressStore, useScanStore, useSizeScanStore } from "@/stores";
 
 export function StatusBar() {
   const { t } = useTranslation();
@@ -13,6 +13,16 @@ export function StatusBar() {
   const repos = useGitReposStore((s) => s.repos);
   const batchTasks = useBatchProgressStore((s) => s.tasks);
   const batchVisible = useBatchProgressStore((s) => s.visible);
+  const scanning = useScanStore((s) => s.scanning);
+  const scannedDirs = useScanStore((s) => s.scannedDirs);
+  const foundRepos = useScanStore((s) => s.foundRepos);
+  const currentScanDir = useScanStore((s) => s.currentScanDir);
+
+  // 大小扫描
+  const sizeScanning = useSizeScanStore((s) => s.sizeScanning);
+  const sizeScannedDirs = useSizeScanStore((s) => s.scannedDirs);
+  const sizeScannedFiles = useSizeScanStore((s) => s.scannedFiles);
+  const currentSizeDir = useSizeScanStore((s) => s.currentSizeDir);
 
   // 根据当前路径推导所属 git 仓库
   const currentRepo = repos.find((r) => currentDir?.startsWith(r.path)) ?? null;
@@ -60,6 +70,26 @@ export function StatusBar() {
         </>
       )}
 
+      {/* 扫描进度 */}
+      {scanning && (
+        <>
+          <div className="sb-item sb-scan" title={currentScanDir}>
+            <span className="sb-scan-spinner" />
+            <span style={{ color: "var(--git-orange)", fontWeight: 600 }}>
+              {t("statusbar:scanning", { defaultValue: "扫描中" })}
+            </span>
+            <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+              {foundRepos} {t("statusbar:repos", { defaultValue: "仓库" })}
+              / {scannedDirs} {t("statusbar:dirs", { defaultValue: "目录" })}
+            </span>
+            <span style={{ color: "var(--text-tertiary)", fontSize: 10, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentScanDir.split(/[\\/]/).pop()}
+            </span>
+          </div>
+          <span className="sb-divider" />
+        </>
+      )}
+
       {/* 批量进度 */}
       {batchVisible && totalCount > 0 && (
         <>
@@ -69,6 +99,26 @@ export function StatusBar() {
               {t("statusbar:batchProgress", { op: "拉取" })}
             </span>
             <span style={{ color: "var(--accent)", fontWeight: 600 }}>{doneCount} / {totalCount}</span>
+          </div>
+          <span className="sb-divider" />
+        </>
+      )}
+
+      {/* 大小扫描进度 */}
+      {sizeScanning && (
+        <>
+          <div className="sb-item sb-scan" title={currentSizeDir}>
+            <span className="sb-scan-spinner" style={{ borderTopColor: "var(--accent)" }} />
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>
+              {t("statusbar:scanningSize", { defaultValue: "扫描大小中" })}
+            </span>
+            <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+              {sizeScannedDirs} {t("statusbar:dirs", { defaultValue: "目录" })}
+              / {sizeScannedFiles} {t("statusbar:files", { defaultValue: "文件" })}
+            </span>
+            <span style={{ color: "var(--text-tertiary)", fontSize: 10, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentSizeDir.split(/[\\/]/).pop()}
+            </span>
           </div>
           <span className="sb-divider" />
         </>

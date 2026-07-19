@@ -166,3 +166,14 @@ pub fn git_diff(
 ) -> AppResult<DiffContent> {
     state.git_service.diff(&repo_path, &file_path)
 }
+
+/// 刷新单个仓库信息（切换分支后调用，只更新该仓库的状态）
+#[tauri::command]
+pub fn git_refresh_repo(
+    repo_path: String,
+    state: State<'_, AppState>,
+) -> AppResult<crate::types::GitRepoInfo> {
+    let path = std::path::Path::new(&repo_path);
+    let info = state.git_detector.scan_one(path)?;
+    Ok(info)
+}

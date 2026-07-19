@@ -23,6 +23,8 @@ pub struct AppState {
     pub batch_ops: Arc<domain::BatchOpsManager>,
     /// 扫描取消令牌
     pub scan_cancel: Arc<AtomicBool>,
+    /// 大小扫描取消令牌
+    pub size_scan_cancel: Arc<AtomicBool>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -48,6 +50,7 @@ pub fn run() {
             let git_service = Arc::new(domain::GitService::new());
             let batch_ops = Arc::new(domain::BatchOpsManager::new(git_service.adapter()));
             let scan_cancel = Arc::new(AtomicBool::new(false));
+            let size_scan_cancel = Arc::new(AtomicBool::new(false));
 
             app.manage(AppState {
                 config,
@@ -56,6 +59,7 @@ pub fn run() {
                 git_service,
                 batch_ops,
                 scan_cancel,
+                size_scan_cancel,
             });
 
             tracing::info!("GitExplore 启动完成");
@@ -71,6 +75,9 @@ pub fn run() {
             commands::workspace::list_drives,
             commands::workspace::scan_git_repos,
             commands::workspace::scan_cancel,
+            // 大小扫描命令
+            commands::size_scan::scan_dir_sizes,
+            commands::size_scan::scan_size_cancel,
             // Git 单库命令
             commands::git::git_status,
             commands::git::git_log,
@@ -81,6 +88,7 @@ pub fn run() {
             commands::git::git_push,
             commands::git::git_commit,
             commands::git::git_diff,
+            commands::git::git_refresh_repo,
             // 文件/系统命令
             commands::fs::fs_open_external,
             commands::fs::fs_open_terminal,

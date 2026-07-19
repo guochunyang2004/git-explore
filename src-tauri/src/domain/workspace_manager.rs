@@ -1,4 +1,4 @@
-//! 工作区管理（对应架构文档 4.1）
+﻿//! 工作区管理（对应架构文档 4.1）
 //!
 //! 管理当前打开的根目录、最近打开记录、文件树读取。
 
@@ -121,7 +121,7 @@ impl WorkspaceManager {
 
             entries.push(FileEntry {
                 name: name.clone(),
-                path: entry.path().to_string_lossy().to_string(),
+                path: strip_verbatim_prefix(&entry.path()).to_string_lossy().to_string(),
                 is_dir: meta.is_dir(),
                 size: if meta.is_dir() { 0 } else { meta.len() },
                 modified,

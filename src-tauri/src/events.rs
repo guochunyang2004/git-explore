@@ -21,6 +21,12 @@ pub mod event_name {
     pub const AUTH_REQUIRED: &str = "auth:required";
     pub const GIT_SCAN_STARTED: &str = "git:scan-started";
     pub const GIT_SCAN_CANCELLED: &str = "git:scan-cancelled";
+    pub const GIT_SCAN_PROGRESS: &str = "git:scan-progress";
+    pub const GIT_REPO_FOUND: &str = "git:repo-found";
+    pub const SIZE_SCAN_STARTED: &str = "size:scan-started";
+    pub const SIZE_SCAN_PROGRESS: &str = "size:scan-progress";
+    pub const SIZE_ENTRY_UPDATED: &str = "size:entry-updated";
+    pub const SIZE_SCAN_CANCELLED: &str = "size:scan-cancelled";
 }
 
 /// 识别到 git 仓库时回传的数据
@@ -117,4 +123,66 @@ pub struct GitScanStartedPayload {
 pub struct GitScanCancelledPayload {
     pub root_path: String,
     pub found: usize,
+}
+
+/// Git 扫描进度（实时上报）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitScanProgressPayload {
+    pub root_path: String,
+    /// 已扫描目录数
+    pub scanned_dirs: u32,
+    /// 已发现仓库数
+    pub found_repos: u32,
+    /// 当前正在扫描的目录路径
+    pub current_dir: String,
+}
+
+/// 单个 Git 仓库被发现（实时上报）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitRepoFoundPayload {
+    pub repo: crate::types::GitRepoInfo,
+}
+
+/// 大小扫描开始
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SizeScanStartedPayload {
+    pub root_path: String,
+}
+
+/// 大小扫描进度
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SizeScanProgressPayload {
+    pub root_path: String,
+    /// 已扫描目录数
+    pub scanned_dirs: u32,
+    /// 已扫描文件数
+    pub scanned_files: u32,
+    /// 当前正在扫描的目录
+    pub current_dir: String,
+}
+
+/// 单个目录大小已算出（实时上报）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SizeEntryUpdatedPayload {
+    /// 目录路径
+    pub path: String,
+    /// 总大小（字节）
+    pub size: u64,
+    /// 子文件数
+    pub file_count: u32,
+    /// 子目录数（递归）
+    pub dir_count: u32,
+}
+
+/// 大小扫描取消/完成
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SizeScanCancelledPayload {
+    pub root_path: String,
+    pub scanned: u32,
 }

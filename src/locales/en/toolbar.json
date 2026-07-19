@@ -13,6 +13,9 @@
   "scanGit": "Scan Git",
   "scanCancel": "Stop Scan",
   "scanning": "Scanning",
+  "scanSize": "Scan Size",
+  "scanSizeCancel": "Stop Size Scan",
+  "scanningSize": "Scanning Size",
   "clone": "Clone",
   "pullAll": "Pull All",
   "pullAllTitle": "Pull latest from all Git repos in current directory"

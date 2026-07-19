@@ -9,5 +9,10 @@
   "ready": "Ready",
   "batchProgress": "Batch {{op}}",
   "language": "Language",
-  "followSystem": "Follow system"
+  "followSystem": "Follow system",
+  "scanning": "Scanning",
+  "scanningSize": "Scanning Size",
+  "repos": "repos",
+  "dirs": "dirs",
+  "files": "files"
 }

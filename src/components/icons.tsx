@@ -102,3 +102,7 @@ export const DriveIcon = ({ size = 16, ...p }: IconProps) => (
 export const CloneIcon = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size)} {...p}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /><rect x="3" y="3" width="18" height="18" rx="2" opacity="0" /></svg>
 );
+
+export const SizeIcon = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size)} {...p}><path d="M3 3h18v18H3z" opacity="0" /><path d="M7 21V3" /><path d="M3 7h18" /><path d="M21 3v18" /><path d="M3 21h18" /><path d="M3 3l18 18" opacity="0" /></svg>
+);

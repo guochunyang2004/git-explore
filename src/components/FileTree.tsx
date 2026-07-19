@@ -6,7 +6,7 @@ import {
   FolderIcon, GitBranchIcon, FileIcon, ChevronRightIcon,
   CheckIcon, RefreshIcon, DriveIcon,
 } from "@/components/icons";
-import { useWorkspaceStore, useGitReposStore, useBatchSelectionStore, useScanStore, useConfigStore } from "@/stores";
+import { useWorkspaceStore, useGitReposStore, useBatchSelectionStore, useScanStore, useConfigStore, useSizeScanStore } from "@/stores";
 import type { GitRepoInfo, FileEntry, FileStatus } from "@/types";
 import { scanGitRepos } from "@/ipc";
 
@@ -72,6 +72,23 @@ function StatusMark({ status }: { status: FileStatus }) {
   );
 }
 
+// ============ 格式化大小 ============
+function formatSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+// ============ 路径规范化 ============
+function normalizePath(p: string): string {
+  let s = p;
+  if (s.startsWith("\\\\?\\")) s = s.slice(4);
+  s = s.replace(/\//g, "\\");
+  return s;
+}
+
 // ============ 树节点（递归，支持展开/折叠和懒加载子目录） ============
 function TreeNode({ entry, depth, reposMap, currentPath }: {
   entry: FileEntry;
@@ -86,10 +103,15 @@ function TreeNode({ entry, depth, reposMap, currentPath }: {
   const setSelected = useWorkspaceStore((s) => s.setSelected);
   const navigateTo = useWorkspaceStore((s) => s.navigateTo);
   const scanning = useScanStore((s) => s.scanning);
+  const dirSizes = useSizeScanStore((s) => s.dirSizes);
 
   const repo = reposMap.get(entry.path) ?? null;
   const isRepo = repo !== null;
   const isActive = currentPath === entry.path;
+
+  // 目录大小
+  const normPath = normalizePath(entry.path);
+  const ds = entry.isDir ? (dirSizes.get(normPath) ?? dirSizes.get(entry.path)) : undefined;
 
   // 批量选择
   const selectedRepos = useBatchSelectionStore((s) => s.selectedRepos);
@@ -168,6 +190,17 @@ function TreeNode({ entry, depth, reposMap, currentPath }: {
 
         {/* Git 仓库角标 */}
         {isRepo && <RepoBadges repo={repo} />}
+
+        {/* 目录大小 */}
+        {ds && (
+          <span
+            className="tree-meta"
+            style={{ color: "var(--text-tertiary)", fontSize: 10, marginLeft: "auto", marginRight: 4, flexShrink: 0 }}
+            title={`${ds.fileCount} 文件, ${ds.dirCount} 子目录`}
+          >
+            {formatSize(ds.size)}
+          </span>
+        )}
 
         {/* 文件 Git 状态 */}
         {!isRepo && entry.gitStatus && <StatusMark status={entry.gitStatus} />}
